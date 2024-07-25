@@ -6,7 +6,7 @@ tags: [lab, CSAPP]
 ---
 
 # 总体要求
->The bits.c file contains a skeleton for each of the 13 programming puzzles. Your assignment is to complete each function skeleton using only straightline code for the integer puzzles (i.e., no loops or con- ditionals) and a limited number of C arithmetic and logical operators. Specifically, you are only allowed to use the following eight operators: ! ̃ & ˆ | + << >> A few of the functions further restrict this list. Also, you are not allowed to use any constants longer than 8 bits
+>The bits.c file contains a skeleton for each of the 13 programming puzzles. Your assignment is to complete each function skeleton using only straightline code for the integer puzzles (i.e., no loops or con- ditionals) and a limited number of C arithmetic and logical operators. Specifically, you are only allowed to use the following eight operators: ! ̃ & ˆ \| + << >> A few of the functions further restrict this list. Also, you are not allowed to use any constants longer than 8 bits
 
 大致就是说，我们需要完成13个函数，每个函数只能使用上述8个操作符，**且不能使用大于8位的常数**，更具体的，每一题目还会有一些限制。
 
@@ -41,7 +41,7 @@ int xor(int a, int b) {
 | 0 | 0 | 1 |
 | 1 | 0 | 0 |
 
-可以看出如果我们能够将两者进行一个或运算，那么就可以得到异或的结果。但问题在于题目不允许使用“|”操作符，所以我们需要想办法将两者进行一个或运算。因此我们需要借助摩根定律。
+可以看出如果我们能够将两者进行一个或运算，那么就可以得到异或的结果。但问题在于题目不允许使用“\|”操作符，所以我们需要想办法将两者进行一个或运算。因此我们需要借助摩根定律。
 
 摩根定律告诉我们，对于任意的A和B，有
 ```
@@ -63,16 +63,20 @@ A ^ B = (A & ~B) | (~A & B) = ~(~(A & ~B) & ~(~A & B))
 ## 题意解析
 该题要求返回最小的二进制补码负数，要求只使用! ~ & ^ | + << >>
 ## 解答
+
 ```c
 int min() {
     return 1 << 31;
 }
 ```
+
 ## 思路
 补码系统下数值与其二进制表示的关系为最高位设为负权，其余位设为正权，即
+
 ```
 x = a[n-1] * (-2)^(n-1) + a[n-2] * 2^(n-2) + ... + a[1] * 2 + a[0]
 ```
+
 其中a[n-1]为最高位，a[0]为最低位，n为二进制位数。因此为了让数值最小，我们只需要将最高位设为1，其余位设为0即可。既然题目允许使用移位操作，那么我们只需要将1左移31位即可得到最小的二进制补码负数。
 
 # 第三题
@@ -97,6 +101,7 @@ int isTmax(int x) {
 ## 题意解析
 该题要求判断一个数的所有奇数的位是否为1，要求只使用! ~ & ^ | + << >>
 ### 解答
+
 ```c
 int allOddBits(int x) {
     int mask = 0xAA;
@@ -104,6 +109,7 @@ int allOddBits(int x) {
     return !((x & mask) ^ mask);
 }
 ```
+
 ## 思路
 构造一个所有奇数位都为1的掩码（0xAAAAAAAA），然后和该掩码做与运算判断是否和掩码相等即可。注意总体要求我们不能使用大于8位的常数，因此我们需要先创建一个八位的奇数位都为1的掩码，然后再将其左移8位，16位，24位，最后将四个掩码相加即可。
 
@@ -113,13 +119,16 @@ int allOddBits(int x) {
 要求返回-x，要求只使用! ~ & ^ | + << >>
 
 ## 解答
+
 ```c
 int negate(int x) {
     return ~x + 1;
 }
 ```
+
 ## 思路
 一个大家都明白的公式，在补码系统下
+
 ```
 -x = ~x + 1
 ```
@@ -127,10 +136,12 @@ int negate(int x) {
 # 第六题
 
 ## 题意解析
+
 判断输入的x是否满足 0x30(48) <= x <= 0x39(57)，即ascii码中数字0~9所对应的符号。
 只允许使用! ~ & ^ | + << >>
 
 ## 解答
+
 ```c
 int isAsciiDigit(int x) {
     int min_neg = ~0x2F;//-48
@@ -142,6 +153,7 @@ int isAsciiDigit(int x) {
 ```
 
 ## 思路
+
 该题要求完成比较操作
 
 如果A > B，那么 A - B > 0，所以我们只要创造出相减数即可。
@@ -151,14 +163,17 @@ int isAsciiDigit(int x) {
 但对于小于等于操作，情况稍微有点不一样了。x <= 57，则有 x - 57 <= 0，问题在于小于判断和等于判断无法再一次通过检查符号位获得了，因此，我们应该改写x - 57 <= 0 为 x - 58 < 0，这样就可以判断x - 58的符号位是否为1来确认是否满足。
 
 ## 思考
+
 如果阅读后面的章节我们会明白CPU中的判断是否大于小于不仅要去检查符号位，还要去检查溢出信号。这是因为如果一次运算造成了溢出，那么通过检查符号位来判断是否大于小于的方法就会得到相反的结果。但问题在于为什么本题没有发生这样的错误。这是因为我们的做法通过将两个涉及大于小于判断的计算的结果与在了一起，这导致就算发生了溢出两者的影响相互抵消了，所以总体上没有什么错误。但是要记住这个做法只不过是碰巧对了罢了。
 
 # 第七题
 
 ## 题意解析
-要求实现一个三目运算符，只可使用! ~ & ^ | + << >>
+
+要求实现一个三目运算符，只可使用! ~ & ^ \| + << >>
 
 ## 解答
+
 ```c
 int conditional(int x, int y, int z) {
     int flag = ((!!x) << 31) >> 31;
@@ -168,6 +183,7 @@ int conditional(int x, int y, int z) {
 ```
 
 ## 思路
+
 核心就在于如何表示选择关系。
 
 注意到-1（即0xFFFFFFFF），每一位都为1，将其与某个数做与运算则可以表示原数，而对其取反（即0），将其与某个数做与运算则可以消除该数。
@@ -179,9 +195,11 @@ int conditional(int x, int y, int z) {
 # 第八题
 
 ## 题意解析
-要求实现一个判断x是否小于等于y的函数，只可以使用! ~ & ^ | + << >>
+
+要求实现一个判断x是否小于等于y的函数，只可以使用! ~ & ^ \| + << >>
 
 ## 解答
+
 ```c
 int isLessOrEqual(int x, int y) {
     int neg_x = ~x + 1;//-x
@@ -235,6 +253,7 @@ int isLessOrEqual(int x, int y) {
 该题要求使用逻辑运算实现逻辑非(!)，可以使用除了逻辑非以外的所有逻辑运算符。
 
 ## 解答
+
 ```c
 int logicalNeg(int x) {
     int neg_x = ~x + 1;
@@ -243,6 +262,7 @@ int logicalNeg(int x) {
 }
 ```
 ## 思路
+
 逻辑非在x为非零值时返回0，在x为零时返回1。
 
 在补码系统下，对于一个非零值，除了最小的数以外，都存在一个相反数与之对应。也就是说**非零数与其相反数之间一定有一个最高位为1**。而对于零，在补码系统下只有一个唯一的表示方法，不存在+0和-0的区别。
@@ -254,6 +274,7 @@ int logicalNeg(int x) {
 # 第十题
 
 ## 题意解析
+
 该题要求计算出最小能够表示一个数的最小数位的个数。
 
 比如对于12(01100)，结果为5，前导的0是必须的，因为在补码系统下，如果无前导0则1100不是表示为12而是-8 + 4 = -4了。
@@ -263,6 +284,7 @@ int logicalNeg(int x) {
 特殊的要注意的是1(01)结果为2，而-1(1)结果为1。
 
 ## 解答
+
 ```c
 int howManyBits(int x) {
     int signFlag = 1 << 31;
@@ -302,6 +324,7 @@ int howManyBits(int x) {
 ```
 
 ## 思路
+
 该题较为复杂。
 
 对于非负数，最少能表示该数的位数就是最高为1的位数再加1。
@@ -319,6 +342,7 @@ int howManyBits(int x) {
 如果检查发现在高16位，我们将数据右移16位（比如说0x7AAAAAA将得到00000111 10101010），如果检查发现在低16位则不进行右移。随后再去检查新的数据中的高8位是否存在1。重复这样的过程即可得到最高的1所在的位数。
 
 大致流程如下：
+
 原始数据0x7AAAAAA (00000111 10101010 10101010 10101010 )
 
     00000111 10101010 10101010 10101010 
@@ -339,11 +363,13 @@ int howManyBits(int x) {
 # 第十一题
 
 ## 题意解析
+
 总算来到浮点数相关的题目了，该题给定一个32位IEEE浮点数的位级表示，要求我们给出该数乘以2后的32为IEEE浮点数的位级表示，如果输入为NAN，则返回原数。
 
 限制条件相比于前面大幅放开，可以使用unsigned类型以及相关的所有操作，并且还给予我们使用if和while的权限。
 
 ## 解答
+
 ```c
 unsigned floatScale2(unsigned uf)
 {
@@ -369,14 +395,17 @@ unsigned floatScale2(unsigned uf)
 ```
 
 ## 思路
+
 首先我们应该对32位IEEE浮点数的组成有一定了解
 从最低位开始按零计数有：
+
 | 31        | 30~23   | 22 ~ 0|
 |-----------|---------|-------|
 |  符号位s  | 阶码exp  | 尾数n |
 
 根据exp的值，IEEE浮点数可以分为非规格化数，规格化数和特殊的无穷大以及NAN。
 以32位为例，其阶码为8位
+
 |exp的情况             | 种类               |浮点数f的计算公式|
 |----------------------|-------------------|----------------|
 |exp != 0 && exp != 255|    规格化数        | f = (-1)<sup>s</sup>  * (N+1) * 2<sup>exp-bias</sup>  |
@@ -400,11 +429,13 @@ s,exp,n都可以通过位运算将输入拆分得到。
 # 第十二题
 
 ## 题意解析
+
 该题输入一个float值的位级表示，要求返回将该float值强转为int后的数值。当float值超出int值（包括INF和NAN）的范围时返回0x80000000。
 
 和上题一样，允许使用所有unsigned相关的操作以及if和while。
 
 ## 解答
+
 ```c
 int floatFloat2Int(unsigned uf) {
     // 31->s, 30~23->exp, 22~0->n
@@ -442,6 +473,7 @@ int floatFloat2Int(unsigned uf) {
 ```
 
 ## 思路
+
 延续第十一题思路中的符号。我们仍然能够通过位运算来获取s，exp，n。
 
 由十一题中的表格能够发现所有的**非规格化数都是小于0的，直接返回0即可**。同时题目要求输入为NAN和INF时返回0x80000000，所以我们**只要考虑当输入为规格化数的情况**。
@@ -454,32 +486,36 @@ int floatFloat2Int(unsigned uf) {
 
 以一个6位的包含小数的二进制系统来说
 1.875表示为:
+
 |2<sup>2</sup>|2<sup>1</sup>|2<sup>0</sup>|2<sup>-1</sup>|2<sup>-2</sup>|2<sup>-3</sup>|
-|----|----|----|-----|-----|-----|
+|-|-|-|-|-|-|
 |0   |0   |1   |1    |1    |1    |
 
 乘以2<sup>2</sup>后：
+
 |2<sup>2</sup>|2<sup>1</sup>|2<sup>0</sup>|2<sup>-1</sup>|2<sup>-2</sup>|2<sup>-3</sup>|
-|----|----|----|-----|-----|-----|
+|-|-|-|-|-|-|
 |1   |1   |1   |1    |0    |0    |
 
 得到7.5。
 
 当仅取整数位时为
+
 |2<sup>2</sup>|2<sup>1</sup>|2<sup>0</sup>|
 |----|----|----|
 |1   |1   |1   |
 
 即7。
 
-所以对于(N+1) * 2<sup>exp-bias</sup>我们也能进行这样的操作。只不过有一点要注意，在计算机存储n（不是N，N代表尾数n从最高位开始按照2^-1^开始计算的二进制小数）时是按照正常的数位存放的。
+所以对于(N+1) * 2<sup>exp-bias</sup>我们也能进行这样的操作。只不过有一点要注意，在计算机存储n（不是N，N代表尾数n从最高位开始按照2<sup>-1</sup>开始计算的二进制小数）时是按照正常的数位存放的。
 
 如下表所示
+
 |n |22   |21   |... |2     |1     |0     |
 |--|-----|-----|----|------|------|------|
 |N |2<sup>-1</sup>|2<sup>-2</sup>|... |2<sup>-21</sup>|2<sup>-22</sup>|2<sup>-23</sup>|
 
-所以我们要表示N + 1时要更新n = n | (1 << 23)。
+所以我们要表示N + 1时要更新n = n \| (1 << 23)。
 
 在取整数位时也可以通过n >> 23来获取整数位的情况。我们可以发现我们需要先将n左移exp - bias然后再右移23，根据位运算的规则我们可以写成右移23 - (exp - bias)。
 
@@ -488,11 +524,13 @@ int floatFloat2Int(unsigned uf) {
 # 第十三题
 
 ## 题意解析
+
 本题输入一个int值x，要求返回2<sup>x</sup>的32浮点数的位级表示。如果值太小则返回0，如果太大则返回+INF。
 
 允许使用所有与int，unsigned有关的符号以及if， while。
 
 ## 解答
+
 ```c
 unsigned floatPower2(int x) {
     // 31->s, 30~23->exp, 22~0->n
@@ -522,6 +560,7 @@ unsigned floatPower2(int x) {
 ```
 
 ## 思路
+
 此题与之前不同，要求我们自己创造一个符合规则的浮点数。
 
 延续第十一题的设定。符号位s，阶码exp，尾数n。
