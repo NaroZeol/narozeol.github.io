@@ -32,7 +32,7 @@ Map，Reduce来源于函数式编程。作者们发现大部分的并行计算�
 
 这篇论文的工作将构建分布式应用的工作简化为编写特定的Map函数和Reduce函数，同时保障具有足够的Scalability。
 
->hides the messy details of parallelization, fault-tolerance, data distribution and load balancing in a **library**
+>hides the messy details of parallelization, fault-tolerance, data distribution and load balancing in a **library**
 
 ### MapReduce模型
 
@@ -95,41 +95,41 @@ MapReduce可以运行在一个有消费级主机组成的集群上。整个集�
 
 因为mapreduce设计在成百上千台计算机上工作，小概率事件乘上大基数就是必然发生。所以一个完整的分布式系统必须要有自动的故障恢复能力。
 
-##### Worker Failure
+1. **Worker Failure**
 
-master定期检查worker是否存活。如果有worker死亡，根据该worker所工作的内容，要有以下工作：
+    master定期检查worker是否存活。如果有worker死亡，根据该worker所工作的内容，要有以下工作：
 
-- 重做该worker的所有map工作，因为map输出的中间产物是存放在本地的磁盘而不是GFS中。在重做完之后要通知对应的reduce工作从新的位置获取中间产物。
+    - 重做该worker的所有map工作，因为map输出的中间产物是存放在本地的磁盘而不是GFS中。在重做完之后要通知对应的reduce工作从新的位置获取中间产物。
 
-- 不需要重做reduce工作，因为reduce的产物是直接存放到GFS中。
+    - 不需要重做reduce工作，因为reduce的产物是直接存放到GFS中。
 
-##### Master Failure
+2. **Master Failure**
 
-作者在论文中提到Master可以用定期存储checkpoint的方式来实现恢复
+    作者在论文中提到Master可以用定期存储checkpoint的方式来实现恢复
 
-但是因为只有一个Master，所以Master出现错误的概率很小。在原始论文中作者提到他们根本没有实现Master Failure。
+    但是因为只有一个Master，所以Master出现错误的概率很小。在原始论文中作者提到他们根本没有实现Master Failure。
 
-这是合理的，小概率乘上小基数约等于不发生，如果真的碰到了大不了重做就行了。
+    这是合理的，小概率乘上小基数约等于不发生，如果真的碰到了大不了重做就行了。
 
-##### 故障恢复中的语义问题
+3. **故障恢复中的语义问题**
 
-因为在故障恢复中涉及到重做，所以会产生一些语义问题
+    因为在故障恢复中涉及到重做，所以会产生一些语义问题
 
-如果被执行的map或reduce函数是**不确定的**（non-deterministic），重做就会带来一些问题
+    如果被执行的map或reduce函数是**不确定的**（non-deterministic），重做就会带来一些问题
 
-所谓的**不确定的**指一个函数的运算结果依赖于除了输入数据以外的数据，比如说一个map函数可能会依赖于执行map函数时的Unix时间戳，这时我们就称这个map函数是不确定的，因为在不同时刻以相同的输入调用会带来不同的输出
+    所谓的**不确定的**指一个函数的运算结果依赖于除了输入数据以外的数据，比如说一个map函数可能会依赖于执行map函数时的Unix时间戳，这时我们就称这个map函数是不确定的，因为在不同时刻以相同的输入调用会带来不同的输出
 
-在重做时，如果函数是**确定的**（deterministic），就可以保证前后重做的结果是一致的
+    在重做时，如果函数是**确定的**（deterministic），就可以保证前后重做的结果是一致的
 
-反之，如果map函数是**不确定的**的，重做后通知reduce使用新的版本，但是因为外部数据的变化，reduce一部分接收的中间产物是由外部数据变化前的map函数产生的，一部分是由变化后的map函数产生的。这时就无法保障在分布式系统中计算的结果和顺序执行的语义一致
+    反之，如果map函数是**不确定的**的，重做后通知reduce使用新的版本，但是因为外部数据的变化，reduce一部分接收的中间产物是由外部数据变化前的map函数产生的，一部分是由变化后的map函数产生的。这时就无法保障在分布式系统中计算的结果和顺序执行的语义一致
 
-不过好在大部分的MapReduce工作都是不涉及外部数据的，使用者应该要有意避免使用可能会使用外部数据的函数。
+    不过好在大部分的MapReduce工作都是不涉及外部数据的，使用者应该要有意避免使用可能会使用外部数据的函数。
 
 ### Backup Tasks
 
 分布式系统一个常见的问题就是整体效率受到某个单机的效率而下降，即所谓木桶效应
 
-单机效率低下会有很多原因，很多时候这种问题难以被察觉。因为总宏观上看，这台机器还是完好无损的。一个常见的例子就是磁盘的**Fail-slow问题**，一个磁盘看上去完好无损，但是读取速度却显著下降。其原因在于消费级磁盘为了维护数据完整性，尽管磁盘的部分发生了损坏，为了不影响读写功能，磁盘内部通过了某些备用机制修复了这些损坏，但代价就是读取速度从可能的30Mb/s变为1Mb/s
+单机效率低下会有很多原因，很多时候这种问题难以被察觉。因为从宏观上看，这台机器还是完好无损的。一个常见的例子就是磁盘的**Fail-slow问题**，一个磁盘看上去完好无损，但是读取速度却显著下降。其原因在于消费级磁盘为了维护数据完整性，尽管磁盘的部分发生了损坏，为了不影响读写功能，磁盘内部通过了某些备用机制修复了这些损坏，但代价就是读取速度从可能的30Mb/s变为1Mb/s
 
 对于这种“straggler”（掉队者）问题，论文介绍了一种解决方案
 
@@ -182,3 +182,114 @@ master定期检查worker是否存活。如果有worker死亡，根据该worker�
 初次看MapReduce的概念真的很难理解为什么能开启大数据的黄金年代，在读完这篇论文之后总算有一点理解了。
 
 其实我觉得构建这样的系统最难的反而是完成另外一辆马车GFS😂
+
+## Lab 1: MapReduce
+
+接下来是lab1的个人思路
+
+根据[MIT学术诚信规范](https://integrity.mit.edu/)，不再公开完整代码（xv6 lab暂时先不管，既往不咎嗷），只写一些个人在完成lab时的思路
+
+lab1相对来说还是比较简单的，毕竟评级是moderate/hard。在阅读完论文后大概前后花了三天时间通过所有测试，其中实际编码时间可能也只有十几个小时。
+
+### 总体思路
+
+在刚接触这个lab的时候，还是感受到十分的吃力。
+
+不过好在和出自同一实验室的xv6 lab一样，该lab也有详细的需求分析和指导。
+
+在阅读完所有的要求后，我走出家门出去河边转了几圈，一边散步一边想怎么做
+
+这是我当时想到的几点可能比较重要的设计：（事实上后面也是跟着这个设计来的）
+
+1. 由coordinator维护一个worker列表，其中记录worker的状态：空闲，工作，死亡。分配工作时就更改相关的状态
+
+2. worker定期向coordinator查询自己的状态是否发生变化，发生变化则请求要工作的内容，然后完成工作
+
+3. worker完成工作之后向coordinator发送改变状态的请求
+
+4. coordinator维护要完成的task列表，在分配工作时启用一个计时器，如果对应的工作没有在10s被完成则重新分配工作，并标记对应的worker死亡，不再分配工作给它（实现时没有用协程计时器，用了更简单的时间戳和轮询）
+
+5. 根据hash(key) % nReduce来决定要怎么分区，map在工作时生成文件map-m-r，其中m为该map工作的编号，r为对应的reduce工作的编号。采用论文提到的trick来提供避免数据竞争
+
+6. 要有一个worker的注册机制
+
+7. 在所有的工作都完成后，由coordinator发送终止信号
+
+整个设计和论文中提到的设计有很多简化的地方（能跑就行，[KISS](https://en.wikipedia.org/wiki/KISS_principle)嘛）
+
+1. 因为测试在本地运行，本地的文件系统即模拟分布式的文件系统。所以map产生的临时文件并不是像论文中提到的存放在对应map节点的本地，而是简单的存放在所谓的“全局文件系统”中。这给我们的实现带来很多好处
+
+2. 论文中的设计是由coordinator主动通过网络通信的方式来告知worker有新的工作，worker是被动接收工作的。在我的设计中通过类似心跳机制的方式，worker是主动通过RPC访问coordinator维护的数据结构来查看自己当前是否应该处于工作状态
+
+3. 在理想的设计中，部分的reduce工作应该是能够和map工作并行的。在我的设计中，reduce必须要在所有的map完成之后再开始
+
+4. 在我的设计中，在一个工作被分配后，通过修改coordinator维护的worker列表中的字符串来标识工作的内容。比如一个worker被分配到map 1的工作，那么这个字符串就是`Map 1 {filename}`，如果分配的是reduce 1的工作，那么该字符串是`Reduce 1 1`。worker通过解析这些有规律的字符串来得知自己要完成的是什么任务
+
+### 数据结构
+
+Coordinator: 
+
+```go
+
+type worker struct {
+	state workerState               // 枚举类型
+	work  string                    // 该worker当前需要完成的工作，有规律的字符串
+}
+
+type workInfo struct {
+	state     int                   // -1->done 0->ready or id of worker
+	timestamp time.Time             // Only avild when state is not 0 or -1
+}
+
+type Coordinator struct {
+	workerMap     map[int]worker    // 维护worker的map，以worker的id为键值
+	workerMapLock sync.RWMutex
+	workInfo      []workInfo        // 维护当前work的列表，根据阶段的不同，可以为map的列表也可以为reduce的列表
+	workInfoLock  sync.RWMutex
+	state         string            // Working, Starting, Exiting, Death 这是对于Coordinator自身而言的状态
+	stateLock     sync.Mutex
+	logger        Logger
+	nReduce       int
+}
+
+```
+
+worker:
+
+```go
+
+// 主要存放该worker的元数据，都是在一次初始化时完成，后续不再更改
+
+type WorkerType struct {
+	mapf    func(string, string) []KeyValue
+	reducef func(string, []string) string
+	logger  Logger
+	nReduce int
+	id      int
+}
+
+```
+
+### 工作流程
+
+1. Coordinator启动，根据输入文件的个数创建对应的map列表
+
+2. Worker启动，通过RPC调用Coordinator的**注册函数**，在Coordinator维护Worker的表中添加一项，初始时状态被设置为`WS_Free`
+
+3. Coordinator发现有尚未分配的map工作和空闲的Worker。修改Worker列表，设置该空闲的Worker**状态**为`WS_Ready`，**工作内容字符串**为`map {mNum} {filename}`，其中`mNum`为该map工作的id，`filename`为要处理的文件名，同时记录该工作发布的时间戳
+
+4. 空闲中的Worker通过RPC来获取在Coordinator中自己的状态，如果发现状态被设置为了`WS_Ready`，则解析其中的工作内容字符串，根据其中的内容来决定要完成的工作
+
+5. 执行map的Worker将中间产物以`mr-nMap-nReduce`的命名按json编码存放，该过程通过文件系统的重命名来保障原子性。
+
+6. 当Worker在完成了一个工作后，通过RPC调用Coordinator的工作完成函数，该函数根据RPC的参数，将对应的工作标识为完成，同时修改对应worker的状态为`WS_Free`
+
+7. 待所有的map工作都已完成，则Coordinator创建一个Reduce工作列表，开始进行Reduce工作的分配，其流程与map基本一致
+
+8. 执行reduce的worker根据reduce的编号，从文件系统中获取对应的`mr-*-nReduce`，然后将结果输出到`mr-out-nReduce`中
+
+9. Coordinator会检查已分配工作的时间戳，对比当前时间是否超过了10s。如果超过了则认定对应的worker已死亡，将其的状态置为`WS_Death`，重新分配该工作。
+
+10. 待所有的工作都完成后，Coordinator遍历worker列表，向其中存活的worker发送一个**假工作**，设置**状态为**`WS_Exiting`，**工作内容字符串为**`Exit`。当worker接收到了`Exit`工作，则再通过RPC调用对应的死亡函数将Coordinator的列表中的状态设置为`WS_Death`。接着退出程序。
+
+11. Coordinator持续检查是否所有的Worker都退出了，如果所有的Worker都已退出则自身也退出程序
