@@ -238,7 +238,7 @@ type worker struct {
 
 type workInfo struct {
 	state     int                   // -1->done 0->ready or id of worker
-	timestamp time.Time             // Only avild when state is not 0 or -1
+	timestamp time.Time             // Only valid when state is not 0 or -1
 }
 
 type Coordinator struct {
@@ -293,3 +293,21 @@ type WorkerType struct {
 10. 待所有的工作都完成后，Coordinator遍历worker列表，向其中存活的worker发送一个**假工作**，设置**状态为**`WS_Exiting`，**工作内容字符串为**`Exit`。当worker接收到了`Exit`工作，则再通过RPC调用对应的死亡函数将Coordinator的列表中的状态设置为`WS_Death`。接着退出程序。
 
 11. Coordinator持续检查是否所有的Worker都退出了，如果所有的Worker都已退出则自身也退出程序
+
+### 缺点
+
+相比于正常的方案，我的方案个人认为有以下缺点：
+
+1. 使用类似心跳机制的方式让Worker获取工作，可能会在某些情况下造成效率的严重损失
+
+2. 默认所有的中间产物都存储在分布式的文件系统而不是本地文件系统中，在真实的系统中会造成大的开销
+
+3. Reduce工作只有在Map工作全部完成后才会发布，理论上应该要允许一部分并行
+
+4. 没有解决潜在的木桶效应
+
+5. 死亡的worker没有类似复活的机制，理论上可以实现一个重新注册功能
+
+6. 使用有规律的字符串而不是一个特定的编码方式会造成可维护性差
+
+7. 在并发控制时大量使用了锁来保护，可能会造成扩展性非常差
