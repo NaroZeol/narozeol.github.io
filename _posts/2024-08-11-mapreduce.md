@@ -2,7 +2,8 @@
 date: 2024-08-11
 title: "MIT-6.5840-lab-mapreudece"
 category: 学习经验
-tags: [MIT-6.5840,分布式系统]
+tags: [MIT-6.5840,分布式系统,lab]
+excerpt: "MapReduce论文解读以及lab1的实现思路"
 ---
 
 # MapReduce

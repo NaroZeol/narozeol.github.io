@@ -3,6 +3,7 @@ date: 2024-07-25
 title: "CSAPP-Datalab"
 category: 学习经验
 tags: [lab, CSAPP]
+excerpt: "CSAPP Datalab"
 ---
 
 # 总体要求
@@ -188,7 +189,7 @@ int conditional(int x, int y, int z) {
 
 注意到-1（即0xFFFFFFFF），每一位都为1，将其与某个数做与运算则可以表示原数，而对其取反（即0），将其与某个数做与运算则可以消除该数。
 
-因此我们只需让flag在x为非零时为0xFFFFFFFF，而为零时为0。通过表达式(y & flag) | (z & ~flag)即可表示选择关系。
+因此我们只需让flag在x为非零时为0xFFFFFFFF，而为零时为0。通过表达式(y & flag) \| (z & ~flag)即可表示选择关系。
 
 0xFFFFFFFF可以通过有符号数的右移补全符号位的规则得到。
 

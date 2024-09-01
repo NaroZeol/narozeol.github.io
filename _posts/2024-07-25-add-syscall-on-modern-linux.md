@@ -3,9 +3,8 @@ date: 2024-07-25
 title: "为现代Linux内核添加系统调用"
 category: 学习经验
 tags: [linux, WSL2]
+excerpt: "一次简单的尝试"
 ---
-
-一次简单的尝试
 
 # 前言
 

