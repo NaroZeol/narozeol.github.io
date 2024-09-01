@@ -23,7 +23,6 @@ footer:
       icon: "fab fa-fw fa-github"
       url: "https://github.com/NaroZeol"
 
-
 defaults:
   # _posts
   - scope:
@@ -54,3 +53,5 @@ category_archive:
 tag_archive:
   type: liquid
   path: /tags/
+
+enable_copy_code_button: true
