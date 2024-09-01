@@ -5,9 +5,9 @@ category: 学习经验
 tags: [linux, WSL2]
 ---
 
-# 为现代Linux内核添加系统调用
+一次简单的尝试
 
-## 前言
+# 前言
 
 学校的操作系统实验课虽然很糟糕（就没有不糟糕的实验课），但是这个实验还是很有意思的。
 
@@ -15,11 +15,11 @@ tags: [linux, WSL2]
 
 所以我决定给自己上点强度，在真正的现代Linux内核（5.15.153，虽然还是有点旧）上增加系统调用。
 
-## 工具
+# 工具
 
 不过话说回来，真正在一个裸机编译和加载一个Linux内核还是挺复杂的，再加上本人是一个WSL享受者。所以这次的实验就借助巨硬提供的好工具来做。
 
-### 编译并更换WSL2的内核
+## 编译并更换WSL2的内核
 
 巨硬为WSL2提供了非常好的内核支持，只需前往[microsoft/WSL2-Linux-Kernel: The source for the Linux kernel used in Windows Subsystem for Linux 2 (WSL2)](https://github.com/microsoft/WSL2-Linux-Kernel)下载最新的release就可以获得到微软为WSL2特制的Linux Kernel。
 
@@ -39,7 +39,7 @@ tags: [linux, WSL2]
 
 接着在powershell或者cmd使用`wsl --shutdown`关闭wsl实例，然后重启wsl即可以新的内核启动。
 
-## 添加函数
+# 添加函数
 
 最核心的工作之一，在`kernel/sys.c`的末尾添加一个函数，来实现我们需要的系统调用。
 
@@ -49,7 +49,7 @@ tags: [linux, WSL2]
 
 如果不使用该宏进行定义会导致`copy_to_user`函数总是返回非零值。
 
-```C
+```c
 SYSCALL_DEFINE1(pedagogictime, struct timespec64 __user *, tv)
 {
 	if(likely(tv)) {
@@ -67,7 +67,7 @@ SYSCALL_DEFINE1(pedagogictime, struct timespec64 __user *, tv)
 
 该服务函数基本功能与`gettimeofday`基本一致。原本的实验内容就是直接使用`do_gettimeofday`来获取当前的Unix时间。但该函数在内核中已被弃用（因为[y2038问题](https://en.wikipedia.org/wiki/Year_2038_problem))，需要使用更加现代的`ktime_get_real_ts64`。
 
-## 添加用户系统调用
+# 添加用户系统调用
 
 在`include/uapi/asm-generic/unistd.h`中模仿其他实现加入我们自己的系统调用编号以及服务函数，同时修改最大系统调用号个数，让其增加一（在5.15.153上默认系统调用的个数是449个）
 
@@ -79,7 +79,7 @@ __SYSCALL(__NR_pedagogictime, sys_pedagogictime)
 #define __NR_syscalls 450
 ```
 
-## 添加架构相关的Entry
+# 添加架构相关的Entry
 
 Linux内核仓库维护系统调用表来自动生成于系统调用相关的汇编代码。两个表分别为`arch/x86/entry/syscalls/syscall_32.tbl` `arch/x86/entry/syscalls/syscall_64.tbl`
 
@@ -87,7 +87,7 @@ Linux内核仓库维护系统调用表来自动生成于系统调用相关的汇
 
 	449 64      pedagogictime        sys_pedagogictime
 
-## 测试内核
+# 测试内核
 
 加载完新内核后，输入`uname -a`来确认是否真的加载了新内核。
 
@@ -97,7 +97,7 @@ Linux内核仓库维护系统调用表来自动生成于系统调用相关的汇
 
 接着编写一个简单的函数来测试内核的修改是否生效。
 
-```C
+```c
 #define _GNU_SOURCE
 #include <sys/syscall.h>
 #include <unistd.h>
