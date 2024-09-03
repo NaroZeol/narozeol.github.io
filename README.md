@@ -1,2 +1,3 @@
 # 个人博客
-暂时还是很简陋的默认模版，只作为一个简单的存储设施。以后有兴趣了再去装饰一下
+
+主题为[minimal-mistakes](https://github.com/mmistakes/minimal-mistakes)
