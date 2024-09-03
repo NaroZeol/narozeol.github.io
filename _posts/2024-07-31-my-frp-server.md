@@ -28,7 +28,7 @@ excerpt: "记录搭建内网穿透服务器的过程"
 
 我购买的配置如下：
 
-![配置](https://raw.githubusercontent.com/NaroZeol/narozeol.github.io/main/images/2024-07-31-my-frp-server/%E9%85%8D%E7%BD%AE.jpg)
+![配置](/assets/images/2024-07-31-my-frp-server/配置.jpg)
 
 因为只有300元，如果想要租一年的服务器的话只能选择2核2G的低配版本。而且使用的也是按流量收费的宽带计费方式
 
