@@ -149,4 +149,12 @@ remotePort = 6022
 
 在搜索了一下之后我选择使用battoexeconverter工具来讲bat转化成exe文件，然后设置窗口为隐藏（也许写一个Windows窗口应用会更好，不过这是很简单的任务，没必要那么做）
 
-接着生成一个快捷方式，将快捷方式放到`C:\Users\%USERNAME%\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup`中，即可实现开机自动运行任务。
+~~接着生成一个快捷方式，将快捷方式放到`C:\Users\%USERNAME%\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup`中，即可实现开机自动运行任务。~~
+
+**2024/9/24 Update**:
+
+使用将快捷方式放入启动文件夹的方式只会在**用户登录**时启动`frpc.exe`而不是**系统启动**时启动。
+
+> tips: **用户登录**指用户输入了正确的密码进入桌面，而**系统启动**才是真正的开机自启
+
+因此真正的做法是使用**任务计划程序**来实现自动启动，`win + S`搜索即可找到该程序，新创建一个任务选择`不管用户是否登录都要运行`，设置触发器为`在系统启动时`，然后将操作设置为对应的bat脚本或者程序加参数
