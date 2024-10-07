@@ -2,8 +2,10 @@ future: true
 title: NaroZeol的博客
 markdown: kramdown
 remote_theme: "mmistakes/minimal-mistakes@4.26.2"
+url: "https://narozeol.github.io/"
 plugins:
   - jekyll-include-cache
+  - jekyll-sitemap
 
 include:
   - _pages
