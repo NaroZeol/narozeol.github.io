@@ -56,3 +56,7 @@ tag_archive:
   path: /tags/
 
 enable_copy_code_button: true
+
+# SEO
+google_site_verification: ROW3yrTZIsYdNu5nbnbkHnphAttpGYEbffKwbBOgMNU
+bing_site_verification: "E929E566B19B6994BF63D84A3A2FFF97"
