@@ -139,7 +139,7 @@ remotePort = 6022
 
 ## 服务器的自动启动
 
-服务器的自动启动参考[官网的教程](https://gofrp.org/zh-cn/docs/setup/systemd/)，通过配置systemd来实现开机自启（感觉不如.bashrc。。。）
+服务器的自动启动参考[官网的教程](https://gofrp.org/zh-cn/docs/setup/systemd/)，通过配置systemd来实现开机自启
 
 ## 客户端的自动启动
 
@@ -158,3 +158,83 @@ remotePort = 6022
 > tips: **用户登录**指用户输入了正确的密码进入桌面，而**系统启动**才是真正的开机自启
 
 因此真正的做法是使用**任务计划程序**来实现自动启动，`win + S`搜索即可找到该程序，新创建一个任务选择`不管用户是否登录都要运行`，设置触发器为`在系统启动时`，然后将操作设置为对应的bat脚本或者程序加参数
+
+# 保护措施
+
+**更新于2024/11/19**
+
+把一个内网的机器暴露在公网上是很危险的，一些学校甚至会因为这个原因禁止学生使用内网穿透工具。不过我们学校好像不怎么管这个，但是还是要做好保护措施以免被请去喝茶
+
+## IP白名单
+
+原本是想用一些公共服务来屏蔽掉恶意的IP地址，也就是根据公共的恶意IP数据库来设置黑名单，但是文档没看懂。。。所以还是省事一点直接用白名单吧，反正我平时也不怎么移动位置，几个固定的网段足够了
+
+注意到学校网络的出口总是前16位固定，所以添加规则时使用16位掩码，这样就算是动态IP也可以使用了。
+
+添加方法为：打开阿里云控制面板，选择ECS实例，选择安全组，添加安全组
+
+## 日志监护
+
+白名单机制其实已经足够好用了，在启用之后世界立马清净了，而且我不太认为会有人喜欢用大陆运营商的网络来做网络攻击。
+
+不过保险起见我还启用了一项措施，通过检测日志行数来关闭frp服务。
+
+因为那些攻击脚本通过暴力尝试密码的方式来攻击，所以在被攻击时frp日志会暴涨到几千条，而普通正常使用一天的日志几乎不会超过100条。根据这个思路就有了日志监护的保险方法。
+
+首先要开启frp的文本化日志，在服务端的配置文件`frps.toml`添加：
+
+```toml
+log.to = '/path/to/log/frps.log'
+```
+
+然后重启frp服务就可以看到它将日志写入了这个文件中
+
+接着就是写一个小脚本定期检查这个日志文件的行数，将其加入到systemd的自启项即可
+
+```bash
+#!/bin/bash
+# Writen by ChatGPT-4o
+
+# 定义日志文件路径和服务名称
+LOG_FILE="/path/to/log/frps.log"  # 这里替换成你的日志文件路径
+SERVICE_NAME="frps.service"      # 这里替换成你要停止的 systemd 服务的名称
+
+# 定义行数阈值
+LINE_THRESHOLD=300
+
+# 定义检查的间隔时间 (单位: 秒，300秒即5分钟)
+INTERVAL=300
+
+while true; do
+    # 获取日志文件的当前行数
+    current_line_count=$(wc -l < "$LOG_FILE")
+
+    # 检查日志文件的行数是否超过阈值
+    if [ "$current_line_count" -gt "$LINE_THRESHOLD" ]; then
+        echo "日志文件超过了 $LINE_THRESHOLD 行，停止服务: $SERVICE_NAME"
+        # 停止 systemd 服务
+        systemctl stop "$SERVICE_NAME"
+    else
+        echo "日志文件行数为 $current_line_count，未超过阈值。"
+    fi
+
+    # 等待 INTERVAL 秒后再次执行
+    sleep "$INTERVAL"
+done
+```
+
+systemd的service文件如下：
+
+```toml
+[Unit]
+Description=Check log file and stop frps service if too many lines
+
+[Service]
+ExecStart=bash /path/to/script/frps-log-watch.sh
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+```
+
+然后启用该服务即可，做法和前面的[官网教程](https://gofrp.org/zh-cn/docs/setup/systemd/)中的一致
