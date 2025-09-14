@@ -351,6 +351,57 @@ sudo systemctl enable bluetooth.service
 sudo systemctl start bluetooth.service
 ```
 
+# 启用休眠功能
+
+为了避免睡眠（sleep）维持内存电容需要的耗电，在surface上我选择使用休眠（hibernate）。
+
+休眠功能需要额外进行一些设置才能启用
+
+1. 移除swap partion
+    
+    本来是不希望使用swap file的，但是好像swap partion针对休眠场景有些问题
+
+2. 扩展根分区，扩展根文件系统
+
+    使用cfdisk扩展根分区，回收移除了的swap partion。
+
+    随后使用resize2fs扩展ext4
+
+3. 创建swapfile
+
+    参考https://www.cnblogs.com/shuimoyun/p/18805669，创建`/swapfile`
+
+4. 更新fstab，移除原有的partion，加入新创建的swapfile
+
+5. 更新grub设置，修改内核启动参数
+
+    参考https://medium.com/@kamalguptawork/configure-swap-space-and-hibernation-in-linux-8efabfa641c4
+
+    使用作者提供的两个命令（本质上就是查询，然后修改grub中的内核参数），再保存grub设置
+
+    ```bash
+    RESUME_PARAMS="resume=UUID=$(findmnt / -o UUID -n) resume_offset=$(sudo filefrag -v /swapfile|awk 'NR==4{gsub(/\./,"");print $4;}') "
+
+    if grep resume /etc/default/grub>/dev/null; then echo -e "\nERROR: Hibernation already configured. Remove the existing configuration from /etc/default/grub and add these parameters instead:\n$RESUME_PARAMS";else sudo sed -i "s/GRUB_CMDLINE_LINUX_DEFAULT=\"/GRUB_CMDLINE_LINUX_DEFAULT=\"$RESUME_PARAMS/" /etc/default/grub;fi
+
+    sudo grub-mkconfig -o /boot/grub/grub.cfg
+    ```
+
+6. 修改initramfs设置，使其能够处理恢复逻辑
+    
+    修改/etc/mkinitcpio.conf，在HOOKS行中添加**resume**，注意添加位置，要求在udev之后
+
+    HOOKS=(base udev **resume** autodetect microcode modconf kms keyboard keymap consolefont block filesystems fsck)
+
+7. 重新创建initramfs
+
+    ```bash
+    sudo mkinitcpio -P
+
+    ```
+
+reboot后，使用systemctl hibernate就能执行休眠，再在KDE的设置中，将长时间无活动的行为修改为休眠即可。
+
 # 美化
 
 这方面的修改其实不多，主要随心挑选几个主题看看。
