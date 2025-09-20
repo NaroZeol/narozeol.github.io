@@ -1,5 +1,5 @@
 ---
-date: 2025-05-03
+date: 2025-09-13
 title: "在surface pro4上安装arch linux"
 category: 学习经验
 tags: [linux, surface, arch]
