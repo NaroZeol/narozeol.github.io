@@ -530,4 +530,83 @@ excerpt: "一些简单的备忘录"
     >
     > 3. 且整个机制是内核管理的，不可被非特权进程伪造。
 
-21. 
+21. 一个进程的nice值越高，受到调度的优先级越低。越nice的进程对其他进程来说就越nice
+
+# Process Relationships
+
+1. tty的全称是Teletypewriter，即电传打字机。可以看一些介绍的视频，还是很有意思的。可以说这就是计算机世界的马屁股大小决定铁轨宽度的故事，tty决定了终端的以行输入输出为主的工作方式。
+
+2. 在常规的UNIX系统（使用init作为一号进程的系统）登陆时发生的流程大致如下：
+
+    1. 系统管理员预先在系统中设置好`/etc/ttys`文件（在systemV系统中，是inittab)，里面记载了哪些终端设备类型以及可以作为登陆终端的设备
+
+    2. init查询`/etc/ttys`文件，为每个终端设备名为getty的进程，执行终端的初始化（如设置波特率等基础设置），打开一个终端文件，将0，1，2号fd绑定到该文件上，即将标准IO绑定到终端。最终getty打印出Login，等待终端的输入（是的，登陆时的Login和Password实际上是由不同进程打印）
+
+    3. 当终端输入了用户名，getty执行exec，转变为`/bin/login`。login打印出`Password`，关闭终端的回显，检查输入的密码是否和命令行参数中的用户名对应的shadow密码一致。
+
+    4. 检查完毕，login进行home目录的设置、终端权限的设置（分配给登陆的user）、初始化环境变量等操作，最终执行exec转变为用户的登陆shell
+
+    5. 登陆shell因为被设置了特殊的argv[0]，所以执行profile的登陆脚本。接着执行自定义脚本。
+
+    实际上登陆流程远比上面描述的复杂。像有图形界面的发行版，login的部分可能会被替换为图形界面的登陆。
+
+    而像使用了systemd作为一号进程的实现，getty的任务被systemd的内置模块替代了，所以在现代以systemd为基础的实现中是找不到`/etc/ttys`或者`/etc/inittab`这些的。
+
+3. 为了支持图形化界面的虚拟终端或者通过网络登陆使用的终端这些不与现实物理终端对应的场景，UNIX引入了伪终端的概念，基本思想就是添加兼容层，将物理终端，网络终端，虚拟终端通过不同逻辑进行兼容。`pseudo terminal`即pts，也就是`/dev/pts/`目录下的设备。
+
+4. 一个进程组中，pid==gid的进程被认为是该组的leader。一个进程组可以没有leader，只要该组中还有一个进程存在，这个进程组就是有效的。
+
+5. `setpgid`调用可以修改一个进程自己或者子进程的组ID。对子进程组ID的修改只能在调用exec之前完成（看起来很奇怪的限制）
+
+6. session是由一系列绑定到相同控制终端的进程组组成的集合。一个进程可以通过调用`pid_t setsid(void)`来创建一个session，**调用的进程不能是一个组的leader**，随后会发生以下三件事
+
+    1. 这个进程会成为session的leader
+
+    2. 这个进程会从原来的组中分离出来，将进程组ID设置为进程PID，即自己作为本组的leader
+
+    3. 这个进程暂时没有控制终端
+
+7. session和进程组的一些特性如下：
+
+    - 一个session只能拥有一个控制终端，通常就是用户的登陆终端
+
+    - 创建了控制终端连接的session leader也被成为**控制进程（controlling process）**
+
+    - session中的进程组可以分为一个前台进程组和一个或多个后台进程组
+
+    - 当终端接收到了控制字符（比如DELETE，Control-C，Control-\），对应的控制signal**只会**被传递给前台进程
+
+    - 当终端断连（比如ssh断开连接），hang-up signal（SIGHUP）只会被发送给session leader
+
+8. 上述规则中最重要的就是最后两条，后台进程不会受到controlling terminal的控制
+
+9. 一个进程访问`/dev/tty`时，永远被导向本进程所属session对应的控制终端。（当一不小心关闭了stdio时，可以通过该方式恢复）
+
+10. 当一个后台进程尝试向控制终端发起读请求，终端驱动会检测到这个行为，向该进程发送SIGTTIN，该signal默认情况下**暂停（STOPPED）**该进程。
+
+    后台进程是否允许向控制终端发起写请求取决于用户的设置，可以通过`stty`这个进行设置，可以选择允许或者和读请求一致处理（此时发送SIGTTOU）
+
+11. 现代的shell默认会将一条命令中的进程都打包成一个进程组执行，而旧shell的实现不会这么做。（不过现在基本上获取不到这样的shell了）
+
+12. 所谓的孤儿进程组的定义
+
+    > An orphaned process group is one in which the parent of every menber is either itself a member of the group or is not a member of the group's session.
+
+    反过来解释，一个进程组不是孤儿进程组就是
+
+    > The group is not orphaned as long as a process in the group has a parnet in a different process group but in the same session.
+
+    当一个进程组不是孤儿的，假设该进程组内所有进程都被暂停，因为存在一个不属于该进程组但是属于同一个会话的某个父进程，所以总是存在将所有进程恢复的**可能性**。（属于同会话意味着这个父进程不是被分配的，是关心子进程的实现）
+
+    比如说使用shell执行的一个程序，因为该程序总是将shell作为其父进程，同时两者又不属于同组但属于同一个会话，就算该程序所属的组内的所有进程都被暂停，因为其存在一个外部的shell控制源，所以存在被恢复的可能性，故不认为这个程序所属的组是孤儿进程组
+
+    反之，如果此时shell被kill，程序的父进程自动继承到init上。一个不属于本会话的外部程序，没有义务恢复被暂停的进程，所以如果不采用某些机制，就会导致该程序组内所有的进程暂停，导致资源的泄漏
+
+    为了解决这一问题，POSIX标准要求在进程组转变为孤儿进程组的瞬间，发送两个signal（SIGHUP和SIGCONT）。
+
+    发送SIGHUP是通知该孤儿进程组的进程，当前进程组已经失去了控制源，内核希望结束该进程组，一个进程可以注册SIGHUP handler来进行一些处理，保存重要的数据或者日志。
+
+    而SIGCONT是为了将处于STOPPED状态的进程唤醒，使其能够处理SIGHUP的逻辑。
+
+    反映到实际，就是一个ssh连接的shell退出，该shell创建的所有进程组都失去了（除了nohup的进程组）**不属于该进程组但是属于同一个会话**的父进程，所以就转变为了孤儿进程组，进而受到SIGHUP信号。
+
