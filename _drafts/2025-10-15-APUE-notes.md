@@ -610,3 +610,107 @@ excerpt: "一些简单的备忘录"
 
     反映到实际，就是一个ssh连接的shell退出，该shell创建的所有进程组都失去了（除了nohup的进程组）**不属于该进程组但是属于同一个会话**的父进程，所以就转变为了孤儿进程组，进而受到SIGHUP信号。
 
+# Signals
+
+1. Signal是一个纯软件级别的中断，没有硬件支持，这意味着signal不是瞬时响应的。一般来说一个进程处理signal的时机是从内核态返回用户态之前。
+
+2. 虽然早期的UNIX就引入了signal，但是它并不可靠，同时调用方式麻烦（需要重复注册signal）。后来BSD又独立实现了一套与旧UNIX不同的signal方案，其在语义上和原有的UNIX相差很多。POSIX选择尊重两者的分裂，不主动定义`signal`调用的行为，提供一个`sigaction`进行详细的设置，并要求后续的实现需要能够通过`sigaction`实现多种语义。
+
+3. signal产生的方式无外乎以下几种：
+
+    1. 终端在收到特定的输入时，由终端驱动发送相应的signal到该控制终端对应会话的前台进程组中
+
+    2. 硬件异常，比如除以0、内存访问越界。kernel将会收到对应的错误，同时产生相应的中断。常见的这类中断就是SIGSEGV
+
+    3. 由kill系统调用发送的中断
+
+    4. 特定事件也会产生signal，比如向一个没有读者的pipe写入数据会触发SIGPIPE，因定时任务而触发的SIGALARM等
+
+4. signal的触发对于一个进程来说可以在任何时刻发生。进程可以选择忽略signal、捕获并采用默认行为、捕获并采用自定义行为中的一个。其中SIGKILL和SIGSTOP是不可忽略的也不可以捕获的
+
+5. 大部分的signal的默认行为是终止进程，有一些signal在终止进程的同时，会生成一份coredump文件，其中记载了进程在被这个signal终止前一瞬间的状态，可以使用gdb+进程二进制+coredump文件重现触发signal的一瞬间。（状态机yes）
+
+6. coredump文件的产生要求在生成的一瞬间，进程对应的可执行文件的所有权归real user所有，同时real user在当前工作目录下有写下coredunmp文件的权限
+
+7. 在signal列表中，有很多signal是由SUN的Solaris引入的，比如SIGJVM1、SIGJVM2、SIGLOST等，足以见得当时的SUN是多么的强大。
+
+8. 和电量相关的通知实现使用SIGPWR，该signal用于通知低电量行为，随后根据管理员的配置决定一个进程要终止还是降低功率的。
+
+9. Linux对于标准中signal默认行为定义为"or"的signal，总是使用终止的语义。它的设计原则就是如果一个signal是发送给特定程序的，那么非该专用用途的程序就不该收到该信号。
+
+10. 命令行的可执行文件的kill默认发送的实际上是SIGTERM而不是SIGKILL，不过大家一般都是用`kill -9`
+
+11. 前面说过，一个后台进程组如果希望向控制终端写入或读出，写入操作根据用户的设置可以正常进行或者受到一个SIGTTIN，读取操作总是受到一个SIGTTOU。默认情况下这两个信号会导致后台进程进入STOP状态，当进程组恢复到前台后能继续读写。但如果收到这两个信号的进程属于一个孤儿进程组，则读写操作总是会返回错误。
+
+12. POSIX定义的信号预留给用户进程自定义使用的只有SIGUSR1和SIGUSR2，但也有一些扩展的做法，比如一些守护进程收到SIGHUP时会执行一些行为（比如重新加载配置文件），因为守护进程没有控制终端，所以理论上它们不会收到来自终端的SIGHUP，所以它们放心地使用这个SIGHUP来是实现一些自定义功能。
+
+13. 当终端的窗口大小发生变化时，对应的前台进程组会收到一个SIGWINCH，被提醒需要做出一些调整来适应新的窗口大小。
+
+14. 出于可移植的目的，永远不要使用signal来注册一个signal handler。前面说过很多次，POSIX只要求所有的实现要提供统一的signal调用，但是没有要求signal调用要求相同的语义。所以总是使用sigaction来注册一个signal handler
+
+15. 在调用exec后，原有设置的signal handler会失效（当然会失效，地址都变得无效了），但是被设置为忽略的signal会被继承，被exec的进程后续依旧会忽略原先被设置为忽略的signal
+
+16. 旧UNIX signal设计失败的主要原因是：
+
+    1. 存在重新设置signal handler的空窗期
+
+    旧UNIX signal**一次注册handler只会生效一次**，类似于alarm的机制，需要在handler内再次注册一次signal。这导致存在signal handler空缺的窗口，如果这个时候又触发了一次signal，则会执行该signal的默认行为。
+
+    ```c
+    // 注册为SIGINT的handler一次
+    sig_int() {
+        // ...
+        // 在进入该handler后，SIGINT的handler被清除
+        // 此时又出发了一次SIGINT，因为handler为空，则触发默认行为：终止进程
+        // ...
+        signal(SIGINT, sig_int);
+        // ...
+    }
+
+    ```
+
+    现代UNIX在进入signal handler后会主动阻塞该signal，只有在返回后才解除，期间的阻塞会被记录，在解除阻塞时再次触发signal
+
+    2. 无法主动阻塞一个signal并记录阻塞的发生
+
+    旧UNIX接口没有提供阻塞一个signal的方式，这导致用户进程没有办法在不希望接收到该signal时进行阻断。
+
+    ```c
+    int main () {
+        signal(SIGINT, sig_int);
+        // ...
+        while (sig_int_flag == 0) {
+            pause();
+        }
+        // ...
+    }
+
+    void *sig_int() {
+        signal(SIGINT, sig_int);
+        sig_int_flag = 1;
+    }
+    ```
+
+    上面这个程序的本意是希望在进入while循环后，在pause状态停止，当收到一个signal时，进程会从pause返回，然后再检查flag是否被置1，如果置1就跳出循环。问题在于如果在检查完条件之后，进入pause之前，进程的控制者就已经发送了SIGINT，此时会处理这个signal，但如果控制着只想发送一次signal，在这之后就没有新的signal了，那么这个进程将一直在pause中阻塞。
+
+    现代UNIX提供了阻塞一个signal的方式，阻塞signal意味着进程暂时不处理signal handler，但是依旧接收signal（记录signal在阻塞期间曾经到来过，但是不计数），随后在解除阻塞后，系统能够知道阻塞期间接收到的但是还没有处理的signal，随后执行相应的handler，这样就会更灵活的多。
+
+17. 真正导致systemV和BSD的signal机制分歧的特性是signal对于阻塞性系统调用的影响
+
+    一些syscall会让进程进入阻塞状态，比如read，write等，它们被称为"slow system call"。
+
+    分歧点就在于，当程序正处于阻塞性syscall的阻塞状态中，这时触发signal并完成处理之后，系统是恢复原有的系统调用还是让这次系统调用失败？
+
+    从现在的程序员的角度，我们肯定希望syscall能够自动恢复，不然当调用一个`read`的时候，还要写一大堆处理来防止`read`被打断。
+
+    systemV选择了不恢复阻塞性syscall，总是让被打断的syscall返回错误，同时设置errno为EINTR。站在当时的角度来看问题，systemV选择了严谨的语义，将syscall发生的异常如实上报。“程序应当显式地知道自己被打断，而不是内核“悄悄”替它恢复”。
+
+    从实现的角度考虑，选择不恢复syscall的内核实现也会更加简单，如果需要恢复syscall，则内核需要保存打断一瞬间的进程状态，而在signal处理程序中，也可能调用syscall，引入非常多的复杂性。
+
+    而BSD站在了用户的一方，自动恢复阻塞性syscall使得应用程序不需要在每次调用时都写上一大堆的if else。当然这样的代价就是内核实现会变得非常复杂。
+
+    POSIX选择了尊重两者，将signal的语义设置为未定义，通过sigaction的SA_RESTART选项来设置是否要恢复阻塞性syscall
+
+18. 大多数信号不安全的函数都是因为使用了全局唯一数据（静态变量，全局变量等），比如exit使用了类似链表的全局结构来保存atexit注册的函数，所以它不是信号安全的。
+
+19. 
