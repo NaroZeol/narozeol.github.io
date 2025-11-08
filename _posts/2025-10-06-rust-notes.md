@@ -460,7 +460,7 @@ excerpt: "原神，启动！"
     `school.rs`（同`mod.rs`)的内容为
 
     ```rust
-    pub mod people; // 声明包含子模块 people
+    pub mod people; // 声明包含子模块 people，并且该子模块是允许外部访问的
     ```
 
     `people.rs`的内容为
@@ -500,4 +500,54 @@ excerpt: "原神，启动！"
     }
     ```
 
-35.
+35. 可以使用`super`作为路径的前缀在依赖关系中代表父模块的路径
+
+    比如，下面中，`back_of_house`作为当前上下文的一个子模块，在其中可以使用`super`来代表父模块即当前上下文，以此引用到当前上下文中的`deliver_order`
+
+    ```rust
+    fn deliver_order() {}
+
+    mod back_of_house {
+        fn fix_incorrect_order() {
+            cook_order();
+            super::deliver_order();
+        }
+
+        fn cook_order() {}
+    }
+    ```
+
+    这个需求在同级模块之间互相调用的情况下还是挺常见的
+
+36. 结构体类型的成员默认为私有的，而枚举类型的成员默认为公有。
+
+37. 使用`use`创建一个名称的别名，默认情况下使用最后一个名称作为`use`创造的缩写，也可以用`use ... as`的方法来自定义名称
+
+    ```rust
+    use std::fmt::Result;
+    use std::io::Result as IoResult;
+
+    fn function1() -> Result {
+        // --snip--
+    }
+
+    fn function2() -> IoResult<()> {
+        // --snip--
+    }
+    ```
+
+38. 使用绑定数据的枚举，就可以将任意类型的数据存放到一个vector中，感觉有些黑科技。这是否说明绑定数据的枚举的结构实际上是{类型标识, 数据指针}这样？那会有性能问题吗，毕竟多了一次跳转。
+
+    ```rust
+    enum SpreadsheetCell {
+        Int(i32),
+        Float(f64),
+        Text(String),
+    }
+
+    let row = vec![
+        SpreadsheetCell::Int(3),
+        SpreadsheetCell::Text(String::from("blue")),
+        SpreadsheetCell::Float(10.12),
+    ];
+    ```
