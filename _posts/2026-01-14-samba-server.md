@@ -184,4 +184,65 @@ directory mask = 2770
 ![Figure6](/assets/images/2026-01-14-samba-server/Figure6.png)
 ![Figure7](/assets/images/2026-01-14-samba-server/Figure7.png)
 
-Begin go
+Bingo ！！！！！
+
+# Linux配置
+
+## 临时挂载
+我使用的是KDE，自带的文件管理器有类似的配置，但是此处的配置只会作为临时配置存在，只能在文件管理器中临时访问。
+
+![Figure8](/assets/images/2026-01-14-samba-server/Figure8.png)
+
+如果需要持久化访问，需要直接mount
+
+1. **创建挂载点**
+
+我选择在用户态进行挂载，挂载在home目录下
+
+```bash
+# 具体名字自行决定
+mkdir -p ~/mnt/FG204
+```
+
+2. **挂载cifs**
+```bash
+# 具体服务器地址自行更改
+mount.cifs //narozeol.top/share ～/mnt/FG204\
+    -o vers=3.1.1,username=samba
+```
+这样做也只能做到临时挂载，如果需要在用户态自动挂载，需要使用systemd用户级automount功能
+
+## 用户态自动挂载
+
+1. **准备权限文件（注意权限）**
+
+    写入文件`./smbcred`，内容为
+
+    ```text
+    username=xxx
+    password=xxx
+    ```
+
+    ```bash
+    chmod 600 ~/.smbcred
+    ```
+
+2. **在用户态创建可供用户访问的挂载点**
+    以用户身份
+
+    ```bash
+    # 具体路径自定义
+    mkdir ~/mnt/FG204
+    ```
+
+3. **修改`/etc/fstab`**
+    启动时自动挂载
+
+    在`/etc/fstab`最后追加
+
+    ```text
+    //narozeol.top/share  /home/naro/mnt/FG204  cifs  _netdev,x-systemd.automount,noatime,credentials=/home/naro/.smbcred,vers=3.1.1,uid=1000,gid=1000  0  0
+    ```
+
+    具体参数自定义
+
