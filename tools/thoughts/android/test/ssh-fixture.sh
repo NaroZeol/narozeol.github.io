@@ -11,13 +11,24 @@ chmod 700 "$fixture_dir/deploy/ssh-gateway.sh"
 python3 -m pip install -q --target build/ssh-fixture/python -r ../server/requirements.txt
 PYTHONPATH="$PWD/build/ssh-fixture/python" python3 -m gunicorn --chdir "$fixture_dir/app" --bind 127.0.0.1:8765 'app:create_app()' > build/ssh-fixture/api.log 2>&1 &
 for name in host wrong-host; do ssh-keygen -q -t ecdsa -b 256 -N '' -f "build/ssh-fixture/$name"; done
+# A random password exists only on this disposable runner for the enrollment test.
+python3 - <<'PYTEST'
+import getpass, os, secrets, subprocess
+from pathlib import Path
+password = secrets.token_hex(32)
+path = Path('build/ssh-fixture/password')
+path.write_text(password)
+path.chmod(0o600)
+subprocess.run(['sudo', 'chpasswd'], input=getpass.getuser()+':'+password+'\n', text=True, check=True)
+print('::add-mask::'+password)
+PYTEST
 cat > build/ssh-fixture/sshd_config <<EOF
 Port 2222
-ListenAddress 0.0.0.0
+ListenAddress 127.0.0.1
 HostKey $PWD/build/ssh-fixture/host
 PidFile $PWD/build/ssh-fixture/sshd.pid
 AuthorizedKeysFile .ssh/authorized_keys
-PasswordAuthentication no
+PasswordAuthentication yes
 KbdInteractiveAuthentication no
 UsePAM yes
 PermitRootLogin no

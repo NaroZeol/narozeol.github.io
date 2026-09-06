@@ -14,13 +14,13 @@ import java.util.concurrent.ExecutorService;
 /** Shared spacing, typography and touch targets used by every feature. */
 class Ui {
 
-  static final int INK = Color.rgb(30, 42, 43),
-    MUTED = Color.rgb(111, 122, 121),
-    BLUE = Color.rgb(49, 104, 93),
-    PAPER = Color.rgb(246, 247, 243),
-    LINE = Color.rgb(224, 229, 222),
-    WHITE = Color.WHITE,
-    ALERT = Color.rgb(159, 78, 50);
+  static final int INK = Color.rgb(43, 41, 38),
+    MUTED = Color.rgb(125, 120, 111),
+    BLUE = Color.rgb(155, 90, 67),
+    PAPER = Color.rgb(255, 254, 252),
+    LINE = Color.rgb(235, 232, 226),
+    WHITE = PAPER,
+    ALERT = Color.rgb(168, 69, 48);
   final Feature.Host host;
   final Activity activity;
   final Store store;
@@ -65,6 +65,48 @@ class Ui {
     return d;
   }
 
+  GradientDrawable flatBackground(int color, int radius) {
+    GradientDrawable result = background(color, radius);
+    result.setStroke(0, color);
+    return result;
+  }
+
+  void divider(LinearLayout parent) {
+    View line = new View(activity);
+    line.setBackgroundColor(LINE);
+    parent.addView(line, new LinearLayout.LayoutParams(-1, dp(1)));
+  }
+
+  void setting(
+    LinearLayout parent,
+    String label,
+    String detail,
+    Runnable action
+  ) {
+    LinearLayout row = new LinearLayout(activity);
+    row.setGravity(Gravity.CENTER_VERTICAL);
+    row.setPadding(0, dp(16), 0, dp(16));
+    TextView name = text(label, 15, INK);
+    row.addView(name, new LinearLayout.LayoutParams(0, -2, 1));
+    TextView value = text(detail + (action == null ? "" : "   ›"), 12, MUTED);
+    value.setGravity(Gravity.END);
+    row.addView(value);
+    if (action != null) {
+      row.setMinimumHeight(dp(52));
+      row.setBackground(
+        new RippleDrawable(
+          ColorStateList.valueOf(0x10000000),
+          null,
+          flatBackground(WHITE, 0)
+        )
+      );
+      row.setOnClickListener(v -> action.run());
+      row.setFocusable(true);
+    }
+    parent.addView(row);
+    divider(parent);
+  }
+
   void space(LinearLayout parent, int size) {
     parent.addView(
       new View(activity),
@@ -80,11 +122,13 @@ class Ui {
     b.setStateListAnimator(null);
     b.setMinHeight(dp(48));
     b.setTextColor(primary ? WHITE : INK);
-    b.setPadding(dp(16), dp(8), dp(16), dp(8));
+    b.setPadding(dp(12), dp(8), dp(12), dp(8));
+    b.setMinWidth(0);
+    b.setMinimumWidth(0);
     b.setBackground(
       new RippleDrawable(
         ColorStateList.valueOf(0x1831685d),
-        background(primary ? BLUE : WHITE, 12),
+        flatBackground(primary ? INK : Color.TRANSPARENT, 8),
         null
       )
     );
@@ -138,36 +182,19 @@ class Ui {
     String title,
     String description
   ) {
-    TextView kicker = text(eyebrow, 11, BLUE);
-    kicker.setLetterSpacing(.14f);
-    parent.addView(kicker);
-    space(parent, 12);
-    TextView name = text(title, 28, INK);
-    name.setTypeface(Typeface.create("serif", Typeface.NORMAL));
-    parent.addView(name);
-    if (!description.isEmpty()) {
-      space(parent, 10);
-      parent.addView(text(description, 14, MUTED));
-    }
-    space(parent, 24);
+    if (!description.isEmpty()) parent.addView(text(description, 13, MUTED));
+    space(parent, 16);
   }
 
   LinearLayout card(LinearLayout parent, String title, String description) {
+    space(parent, 22);
+    if (!title.isEmpty()) parent.addView(text(title, 12, MUTED));
     LinearLayout card = column();
-    card.setPadding(dp(20), dp(20), dp(20), dp(20));
-    card.setBackground(background(WHITE, 16));
-    if (!title.isEmpty()) {
-      TextView t = text(title, 17, INK);
-      t.setTypeface(null, Typeface.BOLD);
-      card.addView(t);
-    }
     if (!description.isEmpty()) {
-      space(card, 10);
-      card.addView(text(description, 14, MUTED));
+      space(card, 12);
+      card.addView(text(description, 13, MUTED));
     }
-    LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, -2);
-    params.setMargins(0, 0, 0, dp(14));
-    parent.addView(card, params);
+    parent.addView(card, new LinearLayout.LayoutParams(-1, -2));
     return card;
   }
 

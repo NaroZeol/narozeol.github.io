@@ -1,7 +1,6 @@
 package top.narozeol.thoughts;
 
 import com.jcraft.jsch.ChannelExec;
-import com.jcraft.jsch.JSch;
 import com.jcraft.jsch.JSchException;
 import com.jcraft.jsch.Session;
 import java.io.ByteArrayInputStream;
@@ -22,31 +21,7 @@ final class SshTransport implements Transport {
     Session session = null;
     ChannelExec channel = null;
     try {
-      JSch ssh = new JSch();
-      ssh.setKnownHosts(
-        new ByteArrayInputStream(
-          (profile.id + " " + profile.knownHost + "\n").getBytes("UTF-8")
-        )
-      );
-      ssh.addIdentity(new DeviceKey(), null);
-      session = ssh.getSession(profile.user, profile.host, profile.port);
-      session.setHostKeyAlias(profile.id);
-      session.setConfig("StrictHostKeyChecking", "yes");
-      session.setConfig("PreferredAuthentications", "publickey");
-      session.setConfig("server_host_key", "ecdsa-sha2-nistp256");
-      session.setConfig("kex", "ecdh-sha2-nistp256");
-      session.setConfig("cipher.c2s", "aes128-ctr");
-      session.setConfig("cipher.s2c", "aes128-ctr");
-      session.setConfig("mac.c2s", "hmac-sha2-256");
-      session.setConfig("mac.s2c", "hmac-sha2-256");
-      session.setConfig(
-        "PubkeyAcceptedAlgorithms",
-        "rsa-sha2-512,rsa-sha2-256"
-      );
-      session.setConfig("compression.c2s", "none");
-      session.setConfig("compression.s2c", "none");
-      session.setTimeout(35000);
-      session.connect(12000);
+      session = SshConnection.open(profile, null);
       channel = (ChannelExec) session.openChannel("exec");
       channel.setCommand("thoughts-rpc-v1");
       channel.setPty(false);
@@ -92,25 +67,7 @@ final class SshTransport implements Transport {
       );
       return result;
     } catch (JSchException e) {
-      String message = String.valueOf(e.getMessage()).toLowerCase(
-        java.util.Locale.ROOT
-      );
-      if (
-        message.contains("hostkey") || message.contains("host key")
-      ) throw new Api.Failure(
-        495,
-        "服务器身份校验失败，已停止连接。请核对服务器公钥。"
-      );
-      if (
-        message.contains("auth fail") || message.contains("auth cancel")
-      ) throw new Api.Failure(
-        401,
-        "设备尚未登记或已被撤销。请在服务器登记这台手机的公钥。"
-      );
-      throw new Api.Failure(
-        503,
-        "SSH 连接失败，请检查网络和服务器状态。本地记录已保留。"
-      );
+      throw SshConnection.failure(e, false);
     } finally {
       if (channel != null) channel.disconnect();
       if (session != null) session.disconnect();

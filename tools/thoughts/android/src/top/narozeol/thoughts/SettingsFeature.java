@@ -18,56 +18,41 @@ final class SettingsFeature extends Ui implements Feature {
   }
 
   public void render(LinearLayout surface) {
-    heading(
-      surface,
-      "PREFERENCES",
-      "设备与数据",
-      "管理设备、备份数据，了解同步方式。"
+    int count = 0;
+    try {
+      count = store.entries().size();
+    } catch (Exception ignored) {}
+    LinearLayout data = card(surface, "数据", "");
+    setting(data, "本机记录", count + " 条", () -> host.navigate("notes"));
+    setting(data, "导出记录与草稿", "", () -> host.export(false));
+    if (account.isVerified() && account.can("thoughts")) setting(
+      data,
+      "导出服务器历史",
+      "",
+      () -> host.export(true)
     );
-    LinearLayout device = card(
-      surface,
-      "设备与连接",
-      !account.isVerified()
-        ? "这台设备尚未完成验证。"
-        : "使用手机专属密钥认证，私钥不离开设备。"
+    setting(data, "同步记录", "", () ->
+      new AlertDialog.Builder(activity)
+        .setTitle("最近同步")
+        .setMessage(account.lastSync())
+        .setPositiveButton("关闭", null)
+        .show()
     );
-    space(device, 14);
-    device.addView(
-      button("管理服务器连接", () -> host.navigate("server"), false)
+    LinearLayout device = card(surface, "设备", "");
+    setting(
+      device,
+      "服务器连接",
+      account.isVerified() ? "Aliyun" : "未连接",
+      () -> host.navigate("server")
     );
-    LinearLayout data = card(
-      surface,
-      "数据与导出",
-      "离线草稿和待同步记录都保存在手机，卸载前请先导出。"
-    );
-    space(data, 14);
-    data.addView(button("导出本机记录与草稿", () -> host.export(false), true));
-    space(data, 10);
-    if (account.isVerified() && account.can("thoughts")) data.addView(
-      button("导出服务器完整历史", () -> host.export(true), false)
-    );
-    LinearLayout sync = card(surface, "同步状态", account.lastSync());
-    space(sync, 14);
-    sync.addView(button("查看本机记录", () -> host.navigate("notes"), false));
-    LinearLayout about = card(
-      surface,
-      "想法 1.2",
-      "记录随时发生的念头，让整理成为日常。"
-    );
-    space(about, 10);
-    about.addView(
-      text(
-        "全部想法公开。手机通过 SSH 提交服务器，再发布到 Gist；博客读者只读取 Gist。\n\n打开 App、保存或手动同步时联网，无广告、无统计、无后台常驻。",
-        13,
-        MUTED
-      )
-    );
-    space(about, 12);
-    about.addView(button("开源组件与许可", () -> showLicenses(), false));
-    space(surface, 8);
-    surface.addView(
-      button("断开并清除本机记录", () -> host.disconnect(), false)
-    );
+    setting(device, "断开并清除本机记录", "", () -> host.disconnect());
+    LinearLayout about = card(surface, "关于", "");
+    setting(about, "想法", "1.3.0", null);
+    setting(about, "开源许可", "", () -> showLicenses());
+    space(surface, 32);
+    android.widget.TextView note = text("一些想法，一点记录。", 12, MUTED);
+    note.setGravity(android.view.Gravity.CENTER);
+    surface.addView(note);
   }
 
   private void showLicenses() {

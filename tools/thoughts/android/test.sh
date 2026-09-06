@@ -27,10 +27,7 @@ if [[ "${THOUGHTS_COMPILE_TEST_ONLY:-0}" != 1 ]]; then
   adb install -r build/test/tests.apk
   ssh_args=()
   if [[ "${THOUGHTS_SSH_TEST:-0}" == 1 ]]; then
-    adb shell am instrument -w -e mode key top.narozeol.thoughts.test/top.narozeol.thoughts.SmokeTest > build/test/key-result.txt
-    sed -n 's/^.*DEVICE_PUBLIC_KEY: //p' build/test/key-result.txt > build/test/device.pub
-    python3 "$HOME/.local/share/naro-thoughts/deploy/register-device.py" --key-file build/test/device.pub --name CI-emulator
-    ssh_args=(-e ssh_host_key "$(cut -d' ' -f2 build/ssh-fixture/host.pub)" -e ssh_wrong_host_key "$(cut -d' ' -f2 build/ssh-fixture/wrong-host.pub)" -e ssh_user "$(id -un)")
+    ssh_args=(-e ssh_host_key "$(cut -d' ' -f2 build/ssh-fixture/host.pub)" -e ssh_wrong_host_key "$(cut -d' ' -f2 build/ssh-fixture/wrong-host.pub)" -e ssh_user "$(id -un)" -e ssh_password "$(cat build/ssh-fixture/password)")
   fi
   adb shell am instrument -w "${ssh_args[@]}" top.narozeol.thoughts.test/top.narozeol.thoughts.SmokeTest | tee build/test/result.txt
   apk_package=top.narozeol.thoughts

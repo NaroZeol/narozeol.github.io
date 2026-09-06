@@ -46,22 +46,34 @@ final class ThoughtsModule extends Ui {
         else notes();
       }
 
+      public String title() {
+        return id.equals("capture")
+          ? drafts.getString("id", null) == null
+            ? "写一条"
+            : "编辑想法"
+          : "想法";
+      }
+
       public String headerAction() {
-        return "同步 ↻";
+        return id.equals("capture") ? "发布" : "同步";
       }
 
       public void performHeaderAction() {
-        host.sync();
+        if (id.equals("capture")) saveNote();
+        else if (!account.isVerified()) host.navigate("server");
+        else host.sync();
       }
 
       public void renderFooter(LinearLayout footer) {
         if (!id.equals("capture")) return;
-        space(footer, 8);
-        footer.addView(button("保存并发布  ↗", () -> saveNote(), true));
-        space(footer, 8);
-        TextView hint = text("全部公开 · 离线时先保存在手机", 12, MUTED);
-        hint.setGravity(Gravity.CENTER);
-        footer.addView(hint);
+        LinearLayout row = new LinearLayout(activity);
+        row.setPadding(0, dp(12), 0, dp(14));
+        row.addView(
+          text("自动保存在本机", 11, MUTED),
+          new LinearLayout.LayoutParams(0, -2, 1)
+        );
+        row.addView(text("发布后公开", 11, MUTED));
+        footer.addView(row);
       }
 
       public void leave() {
@@ -94,15 +106,26 @@ final class ThoughtsModule extends Ui {
     restoring = true;
     editingId = drafts.getString("id", null);
     editingVersion = drafts.getInt("version", 0);
-    heading(
-      surface,
-      "CAPTURE",
-      editingId == null ? "记下这一刻。" : "编辑想法",
-      "不必完整，先留下值得记住的片段。"
+    String date = java.time.LocalDate.now().format(
+      java.time.format.DateTimeFormatter.ofPattern(
+        "M 月 d 日，EEEE",
+        java.util.Locale.CHINA
+      )
     );
-    content = input("有什么想法？", true);
+    surface.addView(
+      text(
+        date + (drafts.getString("content", "").isEmpty() ? "" : " · 草稿"),
+        11,
+        MUTED
+      )
+    );
+    space(surface, 22);
+    content = input("此刻，你在想什么？", true);
     content.setGravity(Gravity.TOP);
-    content.setMinLines(5);
+    content.setMinLines(8);
+    content.setTextSize(18);
+    content.setPadding(0, 0, 0, dp(8));
+    content.setBackgroundColor(Color.TRANSPARENT);
     content.setMaxLines(14);
     content.setLineSpacing(dp(6), 1);
     content.setFilters(new android.text.InputFilter[] {
@@ -112,8 +135,11 @@ final class ThoughtsModule extends Ui {
     content.setContentDescription("想法内容");
     surface.addView(content, new LinearLayout.LayoutParams(-1, -2));
     space(surface, 16);
-    tags = input("标签，用逗号分隔", false);
+    tags = input("＋ 添加标签", false);
     tags.setContentDescription("标签，用逗号分隔");
+    tags.setTextSize(13);
+    tags.setBackgroundColor(Color.TRANSPARENT);
+    tags.setPadding(0, dp(12), 0, dp(12));
     tags.setText(drafts.getString("tags", ""));
     surface.addView(tags);
     space(surface, 10);
@@ -137,17 +163,6 @@ final class ThoughtsModule extends Ui {
       );
     }
     space(surface, 16);
-    if (!account.isVerified()) {
-      LinearLayout onboarding = card(
-        surface,
-        "先记录，稍后连接",
-        "内容会保存在这台手机。登记设备后即可加密同步。"
-      );
-      space(onboarding, 12);
-      onboarding.addView(
-        button("设置设备连接", () -> host.navigate("server"), false)
-      );
-    }
     content.addTextChangedListener(watcher(() -> scheduleDraft()));
     tags.addTextChangedListener(watcher(() -> scheduleDraft()));
     restoring = false;
@@ -204,9 +219,11 @@ final class ThoughtsModule extends Ui {
   }
 
   private void notes() {
-    heading(surface, "YOUR NOTES", "我的想法", "让零散的念头，有迹可循。");
     search = input("搜索内容或标签", false);
     search.setContentDescription("搜索想法");
+    search.setBackground(flatBackground(0xfff4f2ee, 8));
+    search.setTextSize(13);
+    search.setPadding(dp(12), dp(12), dp(12), dp(12));
     surface.addView(search);
     space(surface, 12);
     LinearLayout filters = new LinearLayout(activity);
@@ -232,7 +249,8 @@ final class ThoughtsModule extends Ui {
       b.setMinWidth(0);
       b.setMinimumWidth(0);
       b.setPadding(dp(6), dp(8), dp(6), dp(8));
-      b.setBackground(background(selected ? 0xffe5eee7 : PAPER, 12));
+      b.setBackground(flatBackground(Color.TRANSPARENT, 0));
+      b.setTypeface(null, selected ? Typeface.BOLD : Typeface.NORMAL);
       b.setSelected(selected);
       LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(0, dp(48), 1);
       p.setMargins(dp(2), 0, dp(2), 0);
@@ -275,8 +293,7 @@ final class ThoughtsModule extends Ui {
         ) continue;
         count++;
         LinearLayout card = column();
-        card.setPadding(dp(16), dp(16), dp(16), dp(12));
-        card.setBackground(background(Color.WHITE, 16));
+        card.setPadding(0, dp(20), 0, dp(18));
         String state =
           entry.error != null
             ? "需要处理冲突"
@@ -287,14 +304,18 @@ final class ThoughtsModule extends Ui {
                 : "已提交服务器";
         card.addView(
           text(
-            formatDate(note.optString("created_at")) + "  ·  " + state,
+            formatDate(note.optString("created_at")) +
+              (entry.error != null || entry.pending != null
+                ? "  ·  " + state
+                : ""),
             12,
             entry.error != null ? Color.rgb(160, 54, 44) : MUTED
           )
         );
         space(card, 12);
         TextView body = text(note.optString("content"), 16, INK);
-        body.setMaxLines(5);
+        body.setMaxLines(7);
+        body.setLineSpacing(dp(6), 1);
         body.setEllipsize(android.text.TextUtils.TruncateAt.END);
         card.addView(body);
         JSONArray tags = note.optJSONArray("tags");
@@ -318,8 +339,8 @@ final class ThoughtsModule extends Ui {
         );
         card.setFocusable(true);
         LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(-1, -2);
-        p.setMargins(0, 0, 0, dp(12));
         feed.addView(card, p);
+        divider(feed);
       }
       if (count == 0) {
         space(feed, 28);

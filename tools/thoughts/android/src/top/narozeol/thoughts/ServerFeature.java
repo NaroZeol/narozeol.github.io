@@ -32,116 +32,116 @@ final class ServerFeature extends Ui implements Feature {
   }
 
   public void render(LinearLayout surface) {
-    heading(
-      surface,
-      "SERVER",
-      "我的服务器",
-      "连接设备，查看服务与数据的状态。"
-    );
-    LinearLayout connection = card(
-      surface,
-      !account.isVerified() ? "连接这台设备" : "SSH 加密连接",
-      "narozeol.top  ·  端口 22"
-    );
-    space(connection, 14);
-    connection.addView(
-      button(
-        loading
-          ? "正在验证…"
-          : !account.isVerified()
-            ? "验证连接"
-            : "刷新服务状态",
-        () -> verify(),
-        true
-      )
-    );
-    space(connection, 10);
-    connection.addView(button("设备登记与公钥", () -> enrollment(), false));
-    if (!problem.isEmpty()) {
-      space(connection, 14);
-      connection.addView(text(problem, 13, ALERT));
-    }
+    space(surface, 12);
+    surface.addView(text("我的服务器", 11, MUTED));
+    space(surface, 14);
+    surface.addView(text("Aliyun", 28, INK));
+    space(surface, 8);
+    surface.addView(text("narozeol.top", 13, MUTED));
+    space(surface, 26);
     if (!account.isVerified()) {
-      LinearLayout intro = card(
-        surface,
-        "只需登记一次",
-        "1. 复制这台手机的公钥\n2. 在服务器运行设备登记命令\n3. 回到这里验证连接"
+      surface.addView(
+        button(
+          loading ? "正在连接…" : "连接服务器",
+          () -> passwordEnrollment(),
+          true
+        )
       );
-      space(intro, 12);
-      intro.addView(
+      space(surface, 12);
+      surface.addView(
         text(
-          "私钥保存在手机内。换机或卸载后需要重新登记，未同步内容请先导出。",
+          "首次输入密码，自动登记设备。之后使用手机专属密钥连接。",
           12,
           MUTED
         )
       );
-      return;
-    }
-    if (!account.can("system.read")) {
-      card(
-        surface,
-        "尚未授予状态读取权限",
-        "这台设备可以使用已授权的功能。需要查看服务器状态时，由管理员增加 system.read 权限后重新验证连接。"
+      space(surface, 20);
+      setting(surface, "手动登记公钥", "", () -> enrollment());
+      setting(surface, "已登记，验证连接", "", () -> verify());
+    } else {
+      setting(surface, "设备连接", loading ? "读取中" : "已验证", () ->
+        verify()
       );
-      return;
     }
-    if (snapshot == null) {
-      card(
-        surface,
-        "服务状态尚未读取",
-        "连接成功后会显示发布队列、最近备份和存储情况。"
+    if (!problem.isEmpty()) {
+      space(surface, 14);
+      surface.addView(text(problem, 13, ALERT));
+    }
+    LinearLayout services = card(surface, "服务", "");
+    if (
+      !account.isVerified() || snapshot == null || !account.can("system.read")
+    ) {
+      setting(services, "想法", "等待连接", null);
+      setting(services, "博客发布", "Gist", null);
+      setting(services, "备份与存储", "—", null);
+    } else {
+      JSONObject counts = snapshot.optJSONObject("records");
+      setting(
+        services,
+        "公开想法",
+        counts == null ? "—" : counts.optInt("active") + " 条",
+        () -> host.navigate("notes")
       );
-      return;
-    }
-    try {
-      LinearLayout notes = card(surface, "想法服务", "");
-      row(notes, "服务版本", snapshot.optString("version", "—"));
-      JSONObject counts = snapshot.getJSONObject("records");
-      row(notes, "公开想法", counts.optInt("active") + " 条");
-      row(notes, "回收站", counts.optInt("trash") + " 条");
-      JSONObject publication = snapshot.getJSONObject("publication");
+      JSONObject publication = snapshot.optJSONObject("publication");
       boolean pending =
+        publication != null &&
         publication.optInt("generation") >
-        publication.optInt("published_generation");
-      LinearLayout publishing = card(
-        surface,
+          publication.optInt("published_generation");
+      setting(
+        services,
         "博客发布",
-        pending
-          ? "记录已在服务器，正在等待 Gist 更新。"
-          : "服务器记录已发布到 Gist。"
+        pending ? "待发布，重试" : "已同步 Gist",
+        pending ? () -> host.sync() : null
       );
-      row(publishing, "发布队列", pending ? "待发布" : "已同步");
-      if (pending) {
-        if (!publication.isNull("last_error")) {
-          space(publishing, 10);
-          publishing.addView(
-            text(publication.optString("last_error"), 13, ALERT)
-          );
-        }
-        space(publishing, 12);
-        publishing.addView(button("重试发布", () -> host.sync(), false));
+      if (pending && !publication.isNull("last_error")) {
+        space(services, 10);
+        services.addView(text(publication.optString("last_error"), 12, ALERT));
       }
-      JSONObject backup = snapshot.getJSONObject("backup"),
-        storage = snapshot.getJSONObject("storage");
+      JSONObject backup = snapshot.optJSONObject("backup"),
+        storage = snapshot.optJSONObject("storage");
       LinearLayout data = card(surface, "备份与存储", "");
-      row(data, "最近备份", date(backup.optString("latest_at", "")));
-      row(data, "保留备份", backup.optInt("count") + " 份");
-      row(data, "数据库", size(storage.optLong("database_bytes")));
-      row(data, "磁盘可用", size(storage.optLong("free_bytes")));
+      setting(
+        data,
+        "最近备份",
+        backup == null ? "—" : date(backup.optString("latest_at", "")),
+        null
+      );
+      setting(
+        data,
+        "备份数量",
+        backup == null ? "—" : backup.optInt("count") + " 份",
+        null
+      );
+      setting(
+        data,
+        "数据库",
+        storage == null ? "—" : size(storage.optLong("database_bytes")),
+        null
+      );
+      setting(
+        data,
+        "磁盘可用",
+        storage == null ? "—" : size(storage.optLong("free_bytes")),
+        null
+      );
+      space(surface, 14);
       surface.addView(
         text(
-          "状态读取于 " +
+          "更新于 " +
             java.time.Instant.ofEpochMilli(checkedAt)
               .atZone(java.time.ZoneId.systemDefault())
               .format(
                 java.time.format.DateTimeFormatter.ofPattern("MM.dd HH:mm")
               ),
-          12,
+          11,
           MUTED
         )
       );
-    } catch (Exception e) {
-      card(surface, "状态暂时无法显示", "请刷新后重试，已有内容不受影响。");
+    }
+    if (account.isVerified()) {
+      LinearLayout device = card(surface, "设备", "");
+      setting(device, "设备公钥", "查看", () -> enrollment());
+      setting(device, "使用密码重新登记", "", () -> passwordEnrollment());
     }
   }
 
@@ -211,6 +211,94 @@ final class ServerFeature extends Ui implements Feature {
         });
       }
     });
+  }
+
+  void passwordEnrollment() {
+    if (loading) return;
+    LinearLayout form = column();
+    form.setPadding(dp(24), dp(8), dp(24), dp(4));
+    form.addView(text("naro@narozeol.top", 13, MUTED));
+    space(form, 16);
+    android.widget.EditText password = input("服务器密码", false);
+    password.setInputType(
+      android.text.InputType.TYPE_CLASS_TEXT |
+        android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD
+    );
+    password.setSingleLine(true);
+    password.setSaveEnabled(false);
+    password.setImportantForAutofill(
+      android.view.View.IMPORTANT_FOR_AUTOFILL_NO_EXCLUDE_DESCENDANTS
+    );
+    form.addView(password);
+    space(form, 16);
+    form.addView(
+      text(
+        "密码仅用于本次登记，不会保存。之后使用这台手机的专属密钥连接。",
+        12,
+        MUTED
+      )
+    );
+    AlertDialog dialog = new AlertDialog.Builder(activity)
+      .setTitle("连接服务器")
+      .setView(form)
+      .setNegativeButton("取消", null)
+      .setPositiveButton("连接并登记", null)
+      .create();
+    dialog.setOnShowListener(d -> {
+      dialog
+        .getWindow()
+        .addFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE);
+      dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+        if (password.length() == 0) {
+          password.setError("请输入服务器密码");
+          return;
+        }
+        char[] characters = new char[password.length()];
+        password.getText().getChars(0, characters.length, characters, 0);
+        java.nio.ByteBuffer encoded =
+          java.nio.charset.StandardCharsets.UTF_8.encode(
+            java.nio.CharBuffer.wrap(characters)
+          );
+        byte[] secret = new byte[encoded.remaining()];
+        encoded.get(secret);
+        java.util.Arrays.fill(characters, '\0');
+        if (encoded.hasArray()) java.util.Arrays.fill(
+          encoded.array(),
+          (byte) 0
+        );
+        password.getText().clear();
+        dialog.dismiss();
+        loading = true;
+        problem = "";
+        host.redraw();
+        status("正在连接并登记设备…");
+        IO.execute(() -> {
+          try {
+            JSONObject session = DeviceEnrollment.register(
+              ServerProfile.ALIYUN,
+              secret
+            );
+            account.verified(session);
+            if (account.can("system.read")) readSnapshot();
+            runOnUiThread(() -> {
+              status("设备已连接");
+              if (account.can("thoughts")) host.sync();
+            });
+          } catch (Exception e) {
+            problem = errorMessage(e);
+            runOnUiThread(() -> status(problem));
+          } finally {
+            java.util.Arrays.fill(secret, (byte) 0);
+            loading = false;
+            runOnUiThread(() -> {
+              if (host.activeFeature().equals(id())) host.redraw();
+            });
+          }
+        });
+      });
+    });
+    dialog.setOnDismissListener(d -> password.getText().clear());
+    dialog.show();
   }
 
   void enrollment() {

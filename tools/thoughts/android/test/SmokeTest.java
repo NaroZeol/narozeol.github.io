@@ -177,10 +177,7 @@ public final class SmokeTest extends Instrumentation {
         );
         check(editor != null, "Native editor did not render");
         editor.setText("Offline capture smoke test");
-        findButton(
-          screen.getWindow().getDecorView(),
-          "保存并发布  ↗"
-        ).performClick();
+        findButton(screen.getWindow().getDecorView(), "发布").performClick();
       });
       waitForIdleSync();
       check(
@@ -352,6 +349,29 @@ public final class SmokeTest extends Instrumentation {
       arguments.getString("ssh_user"),
       "ecdsa-sha2-nistp256 " + arguments.getString("ssh_host_key")
     );
+    byte[] wrongPassword = "invalid-password-for-fixture".getBytes("UTF-8");
+    try {
+      DeviceEnrollment.register(profile, wrongPassword);
+      throw new AssertionError(
+        "An incorrect password must not register a device"
+      );
+    } catch (Api.Failure e) {
+      check(e.code == 401, "Incorrect password must be rejected");
+    }
+    for (byte value : wrongPassword)
+      check(value == 0, "Password must be cleared after a failed login");
+    byte[] password = arguments.getString("ssh_password").getBytes("UTF-8");
+    arguments.remove("ssh_password");
+    org.json.JSONObject enrollment = DeviceEnrollment.register(
+      profile,
+      password
+    );
+    check(
+      enrollment.optString("transport").equals("ssh"),
+      "Enrollment must verify the device key after password login"
+    );
+    for (byte value : password)
+      check(value == 0, "Password must be cleared after enrollment");
     SshTransport transport = new SshTransport(profile);
     org.json.JSONObject session = transport.request("/session", "GET", null);
     check(

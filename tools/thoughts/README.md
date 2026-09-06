@@ -4,9 +4,9 @@
 
 Android 原生 App → SSH 受限通道 → 阿里云本机 API → 原 Gist。博客读者只读取 Gist，没有服务器回退。想法全部公开；手机离线保存草稿和待同步记录，联网打开应用或手动同步后发布，没有后台常驻服务。博客原有正文保持不变。
 
-App 分为记录、想法、服务、设置四个入口：快速输入与草稿、搜索与回收站、发布与备份状态、设备登记与导出。界面采用统一的文字层级、间距和触控尺寸，宽屏内容限宽。
+App 分为记录、想法、服务、设置四个入口：快速输入与草稿、搜索与回收站、发布与备份状态、设备登记与导出。界面采用已确认的「纸页」方向：无边框编辑区、页首发布操作、细线文字列表和分组设置；取消大标题、重复说明与卡片堆叠。宽屏内容限宽。
 
-设备首次运行生成 Android Keystore RSA 3072 密钥，私钥不离开系统密钥库。服务器管理员手动登记公钥后才能管理数据。固定服务器主机公钥防止连接到冒充的服务器；密钥变化时拒绝连接，需要核验并更新配置。卸载或换机后需重新登记。
+设备首次运行生成 Android Keystore RSA 3072 密钥，私钥不离开系统密钥库。首次连接可输入一次服务器密码，App 在校验固定服务器主机公钥后，通过 SSH 执行固定登记脚本，再验证受限设备密钥登录。密码不写入磁盘或偏好设置，使用后清空字节缓冲；仍可由管理员手动登记公钥。固定服务器主机公钥防止连接到冒充的服务器；密钥变化时拒绝连接，需要核验并更新配置。卸载或换机后需重新登记。
 
 仅沿用 SSH 22 端口，不需要公网 HTTP、HTTPS、证书或新增安全组规则。API 只监听 `127.0.0.1:8765`。GitHub 的 Gist 写入凭据仅保存在服务器。
 
@@ -43,7 +43,7 @@ ssh -t aliyun bash /home/naro/.local/share/naro-thoughts/deploy/activate.sh
 
 如未配置 Gist token，脚本会以不回显方式提示输入仅有 `gist` scope 的 classic PAT；随后 sudo 安装本机 API 和定时器。只停止带本项目标记的旧 Caddy 服务，不安装代理或修改安全组。Token 保存为 `0600` 的 `~/.local/share/naro-thoughts/gist-token`。
 
-安装 APK，在「服务 → 设备登记与公钥」复制公钥，然后执行：
+安装 APK，在「服务 → 连接服务器」输入服务器密码即可自动登记。密码只用于这一次连接，之后使用手机密钥。需要手动登记时，在「服务 → 手动登记公钥」复制公钥，然后执行：
 
 ```sh
 ssh -t aliyun python3 /home/naro/.local/share/naro-thoughts/deploy/register-device.py
@@ -80,11 +80,11 @@ export THOUGHTS_KEYSTORE_PASSWORD_FILE=/path/to/private/signing-password
 bash tools/thoughts/android/build.sh
 ```
 
-签名别名为 `thoughts`，产物 `android/build/thoughts.apk`，当前版本 1.2.0（versionCode 5）。签名文件需单独备份；同签名覆盖安装保留数据，后续升级需递增 versionCode。
+签名别名为 `thoughts`，产物 `android/build/thoughts.apk`，当前版本 1.3.0（versionCode 6）。签名文件需单独备份；同签名覆盖安装保留数据，后续升级需递增 versionCode。
 
 GitHub Actions 支持 repository secrets `THOUGHTS_KEYSTORE_BASE64` 和 `THOUGHTS_KEYSTORE_PASSWORD`；没有 secrets 时构建独立包名的「想法·预览」，可与正式版共存，不能用于更新正式版。CI 使用临时签名，仅供验证。
 
-Android 10 / 15 模拟器验证离线保存、列表与草稿、同步响应不覆盖新编辑，以及 Android Keystore 签名、受限 SSH 登录、增删改恢复、历史、主机公钥拒绝和权限检查。SSH 测试在临时 CI 服务上运行，不连接生产服务器、不写 Gist；页面截图和日志作为 verification artifact 留存。
+Android 10 / 15 模拟器验证离线保存、列表与草稿、同步响应不覆盖新编辑，以及 Android Keystore 签名、一次性密码登记与错误密码拒绝、密码缓冲清理、受限 SSH 登录、增删改恢复、历史、主机公钥拒绝和权限检查。SSH 测试在临时 CI 服务上运行，不连接生产服务器、不写 Gist；页面截图和日志作为 verification artifact 留存。
 
 ## 运维
 

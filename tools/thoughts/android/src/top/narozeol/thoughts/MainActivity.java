@@ -144,44 +144,48 @@ public final class MainActivity extends Activity implements Feature.Host {
     active = features.get(current);
     LinearLayout root = ui.column();
     root.setBackgroundColor(Ui.PAPER);
-    root.setPadding(ui.dp(22), ui.dp(12), ui.dp(22), ui.dp(8));
+    root.setPadding(ui.dp(24), ui.dp(12), ui.dp(24), ui.dp(8));
     root.setOnApplyWindowInsetsListener((v, insets) -> {
       v.setPadding(
-        ui.dp(22),
+        ui.dp(24),
         insets.getSystemWindowInsetTop() + ui.dp(12),
-        ui.dp(22),
+        ui.dp(24),
         insets.getSystemWindowInsetBottom() + ui.dp(8)
       );
       return insets;
     });
     LinearLayout header = new LinearLayout(this);
     header.setGravity(Gravity.CENTER_VERTICAL);
-    TextView brand = ui.text("想法", 25, Ui.INK);
-    brand.setTypeface(Typeface.create("serif", Typeface.NORMAL));
+    TextView brand = ui.text(active.title(), 22, Ui.INK);
+    brand.setGravity(Gravity.CENTER_VERTICAL);
+    brand.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
     header.addView(brand, new LinearLayout.LayoutParams(0, ui.dp(48), 1));
-    if (!active.headerAction().isEmpty()) header.addView(
-      ui.button(
+    if (!active.headerAction().isEmpty()) {
+      Button action = ui.button(
         active.headerAction(),
         () -> active.performHeaderAction(),
         false
-      )
-    );
+      );
+      action.setTextColor(Ui.BLUE);
+      header.addView(action);
+    }
     root.addView(header);
     statusView = ui.text(message, 12, Ui.MUTED);
-    statusView.setPadding(0, ui.dp(10), 0, ui.dp(20));
+    statusView.setPadding(0, ui.dp(6), 0, ui.dp(6));
+    statusView.setMaxLines(2);
+    statusView.setVisibility(View.GONE);
     statusView.setAccessibilityLiveRegion(
       View.ACCESSIBILITY_LIVE_REGION_POLITE
     );
-    root.addView(statusView);
     ScrollView scroll = new ScrollView(this);
     scroll.setFillViewport(true);
     scroll.setClipToPadding(false);
     scroll.setVerticalScrollBarEnabled(false);
     LinearLayout surface = ui.column();
-    surface.setPadding(0, ui.dp(6), 0, ui.dp(24));
+    surface.setPadding(0, ui.dp(16), 0, ui.dp(24));
     FrameLayout frame = new FrameLayout(this);
     int width = Math.min(
-      getResources().getDisplayMetrics().widthPixels - ui.dp(44),
+      getResources().getDisplayMetrics().widthPixels - ui.dp(48),
       ui.dp(680)
     );
     frame.addView(
@@ -198,6 +202,8 @@ public final class MainActivity extends Activity implements Feature.Host {
     LinearLayout footer = ui.column();
     active.renderFooter(footer);
     root.addView(footer);
+    root.addView(statusView);
+    ui.divider(root);
     LinearLayout nav = new LinearLayout(this);
     nav.setPadding(0, ui.dp(8), 0, 0);
     for (Feature feature : features.values()) {
@@ -207,25 +213,20 @@ public final class MainActivity extends Activity implements Feature.Host {
         () -> navigate(feature.id()),
         false
       );
-      button.setTextSize(12);
-      button.setTextColor(selected ? Ui.BLUE : Ui.MUTED);
+      button.setTextSize(11);
+      button.setTextColor(selected ? Ui.INK : Ui.MUTED);
       button.setPadding(ui.dp(4), ui.dp(8), ui.dp(4), ui.dp(6));
       button.setMinWidth(0);
       button.setMinimumWidth(0);
       button.setSelected(selected);
-      android.graphics.drawable.GradientDrawable navBackground = ui.background(
-        selected ? 0xffe5eee7 : Ui.PAPER,
-        14
-      );
-      navBackground.setStroke(0, Ui.PAPER);
-      button.setBackground(navBackground);
-      Drawable icon = ui.icon(feature.id(), selected ? Ui.BLUE : Ui.MUTED);
-      icon.setBounds(0, 0, ui.dp(22), ui.dp(22));
+      button.setBackground(ui.flatBackground(Ui.PAPER, 0));
+      Drawable icon = ui.icon(feature.id(), selected ? Ui.INK : Ui.MUTED);
+      icon.setBounds(0, 0, ui.dp(24), ui.dp(24));
       button.setCompoundDrawables(null, icon, null, null);
       button.setCompoundDrawablePadding(ui.dp(5));
       LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
         0,
-        ui.dp(66),
+        ui.dp(62),
         1
       );
       params.setMargins(ui.dp(2), 0, ui.dp(2), 0);
@@ -243,8 +244,7 @@ public final class MainActivity extends Activity implements Feature.Host {
       int visibility = keyboard ? View.GONE : View.VISIBLE;
       if (nav.getVisibility() != visibility) {
         nav.setVisibility(visibility);
-        header.setVisibility(visibility);
-        screenStatus.setVisibility(visibility);
+        if (keyboard) screenStatus.setVisibility(View.GONE);
       }
     });
     setContentView(root);
@@ -252,14 +252,16 @@ public final class MainActivity extends Activity implements Feature.Host {
 
   public void status(String value) {
     message = value == null ? "操作未完成，请重试" : value;
-    if (statusView != null) statusView.setText(message);
+    if (statusView != null) {
+      TextView feedback = statusView;
+      feedback.setText(message);
+      feedback.setVisibility(View.VISIBLE);
+      feedback.postDelayed(() -> feedback.setVisibility(View.GONE), 5000);
+    }
   }
 
   public void sync() {
-    if (!account.isVerified()) {
-      status("已保存在手机 · 连接设备后同步");
-      return;
-    }
+    if (!account.isVerified()) return;
     if (!SYNCING.compareAndSet(false, true)) return;
     status("正在同步 · 本机记录已保留");
     IO.execute(() -> {

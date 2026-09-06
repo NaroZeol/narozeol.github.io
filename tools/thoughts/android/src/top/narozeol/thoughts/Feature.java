@@ -8,6 +8,11 @@ import java.util.concurrent.ExecutorService;
 interface Feature {
   String id();
   String label();
+
+  default String title() {
+    return label();
+  }
+
   void render(LinearLayout surface);
 
   default String headerAction() {
