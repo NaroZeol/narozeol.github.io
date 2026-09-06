@@ -17,6 +17,11 @@ exclude:
   - deploy
   - docs
   - README.md
+  - vendor
+  - .bundle
+  - Gemfile
+  - Gemfile.lock
+  - node_modules
 
 include:
   - _pages

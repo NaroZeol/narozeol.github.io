@@ -19,6 +19,16 @@ if [[ -d /var/www/naro-blog && ! -f /var/www/naro-blog/.naro-thoughts-managed ]]
   exit 1
 fi
 apt-get update
+apt-get install -y ca-certificates curl gnupg
+# Ubuntu minimal images may omit universe; use Caddy's official signed repository.
+repo_tmp=$(mktemp -d)
+trap 'rm -rf "$repo_tmp"' EXIT
+curl --fail --silent --show-error --location --retry 3 --max-time 60 https://dl.cloudsmith.io/public/caddy/stable/gpg.key -o "$repo_tmp/caddy.asc"
+gpg --batch --yes --dearmor -o "$repo_tmp/caddy.gpg" "$repo_tmp/caddy.asc"
+curl --fail --silent --show-error --location --retry 3 --max-time 60 https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt -o "$repo_tmp/caddy.list"
+install -m 644 "$repo_tmp/caddy.gpg" /usr/share/keyrings/caddy-stable-archive-keyring.gpg
+install -m 644 "$repo_tmp/caddy.list" /etc/apt/sources.list.d/caddy-stable.list
+apt-get update
 apt-get install -y caddy
 install -d -m 755 /var/www/naro-blog
 cp -a "$data_dir/blog/." /var/www/naro-blog/

@@ -66,8 +66,9 @@ def create_app(config=None):
             INSERT OR IGNORE INTO publication(id) VALUES(1);
         """)
         # Migrate the earlier, unpublished visibility design without losing records.
-        if "visibility" in [row["name"] for row in db().execute("PRAGMA table_info(thoughts)")]:
-            with db():
+        with db():
+            db().execute("BEGIN IMMEDIATE")
+            if "visibility" in [row["name"] for row in db().execute("PRAGMA table_info(thoughts)")]:
                 db().execute("DROP INDEX IF EXISTS thoughts_public_date")
                 db().execute("ALTER TABLE thoughts DROP COLUMN visibility")
                 db().execute("UPDATE publication SET generation=generation+1 WHERE id=1")
