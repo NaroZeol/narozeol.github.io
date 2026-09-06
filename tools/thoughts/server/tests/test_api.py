@@ -164,7 +164,7 @@ def test_write_during_gist_upload_stays_pending_and_publishers_are_serialized(ap
 
 
 def test_reader_uses_only_gist():
-    root = Path(__file__).parents[2]
+    root = Path(__file__).parents[4]
     source = (root / "assets/js/thoughts.js").read_text()
     assert "feed.dataset.gist" in source
     assert "/api/" not in source and "narozeol.top" not in source

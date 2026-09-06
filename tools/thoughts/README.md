@@ -10,11 +10,11 @@
 
 ## 结构
 
-- `android/`：Android 8.0+ 原生 Java 界面，系统 SQLite、网络栈和 Keystore；零第三方运行时依赖。
-- `thoughts-app/`：Flask + Gunicorn，SQLite 保存记录、历史、会话和发布队列。
-- `thoughts-app/publisher.py`：把有效记录写入原 Gist 的 `thoughts.json`，不创建新的 Gist。
+- `tools/thoughts/android/`：Android 8.0+ 原生 Java 界面，系统 SQLite、网络栈和 Keystore；零第三方运行时依赖。
+- `tools/thoughts/server/`：Flask + Gunicorn，SQLite 保存记录、历史、会话和发布队列。
+- `tools/thoughts/server/publisher.py`：把有效记录写入原 Gist 的 `thoughts.json`，不创建新的 Gist。
 - `assets/js/thoughts.js`：只读原 Gist raw URL，搜索与分页在浏览器完成。
-- `deploy/`：Caddy HTTPS、API 服务、每分钟发布重试、每天备份。
+- `tools/thoughts/deploy/`：Caddy HTTPS、API 服务、每分钟发布重试、每天备份。
 - `.github/workflows/check.yml`：博客构建、API 测试、APK 构建及 Android 模拟器烟雾测试。
 
 Gist 地址沿用原配置。该 Gist 是 unlisted，通过公开链接可读取；它不是登录保护的存储。
@@ -31,7 +31,7 @@ App 和网页区分「已保存到服务器」与「已发布到 Gist」。移�
 
 ## 首次启用
 
-先构建博客和 Android APK，再执行 `bash deploy/stage.sh`。它只上传构建和代码，不上传凭据。
+先构建博客和 Android APK，再执行 `bash tools/thoughts/deploy/stage.sh`。它只上传构建和代码，不上传凭据。
 
 在自己的终端运行：
 
@@ -57,10 +57,10 @@ ssh -t aliyun bash /home/naro/.local/share/naro-thoughts/deploy/activate.sh
 bundle install
 bundle exec jekyll serve
 python3 -m venv .venv
-.venv/bin/pip install -r thoughts-app/requirements.txt pytest==8.4.2
-.venv/bin/python -m pytest thoughts-app/tests -q
+.venv/bin/pip install -r tools/thoughts/server/requirements.txt pytest==8.4.2
+.venv/bin/python -m pytest tools/thoughts/server/tests -q
 THOUGHTS_DEV=1 THOUGHTS_ORIGIN=http://127.0.0.1:8765 \
-  .venv/bin/python -m gunicorn --chdir thoughts-app --bind 127.0.0.1:8765 'app:create_app()'
+  .venv/bin/python -m gunicorn --chdir tools/thoughts/server --bind 127.0.0.1:8765 'app:create_app()'
 ```
 
 开发数据库可用 `THOUGHTS_DATABASE` 指向临时位置。不要把开发实例指向生产数据库。
@@ -74,10 +74,10 @@ export ANDROID_JAR="$ANDROID_HOME/platforms/android-35/android.jar"
 export ANDROID_BUILD_TOOLS="$ANDROID_HOME/build-tools/35.0.0"
 export THOUGHTS_KEYSTORE=/path/to/private/android-signing.jks
 export THOUGHTS_KEYSTORE_PASSWORD_FILE=/path/to/private/signing-password
-bash android/build.sh
+bash tools/thoughts/android/build.sh
 ```
 
-签名别名固定为 `thoughts`。构建输出 `android/build/thoughts.apk`，密钥和构建目录均不纳入 Git。当前正式签名文件由工作机保存在 `~/.local/share/naro-thoughts/`，应单独备份，后续升级必须使用同一密钥并递增 manifest 的 versionCode。
+签名别名固定为 `thoughts`。构建输出 `tools/thoughts/android/build/thoughts.apk`，密钥和构建目录均不纳入 Git。当前正式签名文件由工作机保存在 `~/.local/share/naro-thoughts/`，应单独备份，后续升级必须使用同一密钥并递增 manifest 的 versionCode。
 
 GitHub Actions 可配置 `THOUGHTS_KEYSTORE_BASE64` 和 `THOUGHTS_KEYSTORE_PASSWORD` 两个 repository secrets，生成同签名的正式包；没有 secrets 时生成包名独立的「想法·预览」，可与正式版共存，不可用于更新正式版。预览签名每次变化，只适合 CI 验证。
 
