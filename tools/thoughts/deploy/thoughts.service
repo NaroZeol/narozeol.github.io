@@ -9,9 +9,10 @@ Group=naro
 WorkingDirectory=/home/naro/.local/share/naro-thoughts/app
 Environment=PYTHONPATH=/home/naro/.local/share/naro-thoughts/python
 Environment=THOUGHTS_DATABASE=/home/naro/.local/share/naro-thoughts/thoughts.sqlite
-Environment=THOUGHTS_ORIGIN=https://narozeol.top
-Environment=THOUGHTS_TRUST_PROXY=1
-ExecStart=/usr/bin/python3 -m gunicorn --workers 2 --bind 127.0.0.1:8765 --timeout 30 --access-logfile - --error-logfile - app:create_app()
+Environment=THOUGHTS_ORIGIN=https://narozeol.top:8443
+Environment=THOUGHTS_TRUST_PROXY=0
+ExecStart=/usr/bin/python3 -m gunicorn --workers 1 --worker-class gthread --threads 4 --bind 0.0.0.0:8443 --certfile /home/naro/.local/share/naro-thoughts/tls/server.crt --keyfile /home/naro/.local/share/naro-thoughts/tls/server.key --forwarded-allow-ips= --timeout 30 --access-logfile - --error-logfile - app:create_app()
+ExecReload=/bin/kill -HUP $MAINPID
 Restart=on-failure
 RestartSec=3
 UMask=0077

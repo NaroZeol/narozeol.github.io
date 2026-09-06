@@ -14,7 +14,7 @@
 - `tools/thoughts/server/`：Flask + Gunicorn，SQLite 保存记录、历史、会话和发布队列。
 - `tools/thoughts/server/publisher.py`：把有效记录写入原 Gist 的 `thoughts.json`，不创建新的 Gist。
 - `assets/js/thoughts.js`：只读原 Gist raw URL，搜索与分页在浏览器完成。
-- `tools/thoughts/deploy/`：Caddy HTTPS、API 服务、每分钟发布重试、每天备份。
+- `tools/thoughts/deploy/`：Gunicorn 直接 TLS、API 服务、证书续期、每分钟发布重试、每天备份。
 - `.github/workflows/check.yml`：博客构建、API 测试、APK 构建及 Android 模拟器烟雾测试。
 
 Gist 地址沿用原配置。该 Gist 是 unlisted，通过公开链接可读取；它不是登录保护的存储。
@@ -31,7 +31,7 @@ App 和网页区分「已保存到服务器」与「已发布到 Gist」。移�
 
 ## 首次启用
 
-先构建博客和 Android APK，再执行 `bash tools/thoughts/deploy/stage.sh`。它只上传构建和代码，不上传凭据。
+首次部署时先在服务器运行 `deploy/tls.sh`（以 naro 用户运行），把生成的 `~/.local/share/naro-thoughts/tls/ca.crt` 复制到 `android/res/raw/thoughts_ca.crt`，再构建 Android APK。仓库里的 CA 公共证书已对应当前服务器，正常构建不需重新生成。执行 `bash tools/thoughts/deploy/stage.sh`。它只上传构建和代码，不上传凭据。
 
 在自己的终端运行：
 
@@ -41,10 +41,13 @@ ssh -t aliyun bash /home/naro/.local/share/naro-thoughts/deploy/activate.sh
 
 依次输入仅有 `gist` scope 的 GitHub classic PAT 和服务器的 sudo 密码。Token 使用不回显的交互输入，并保存为服务器上 `0600` 的 `~/.local/share/naro-thoughts/gist-token`。不要把 token 写进仓库、App、网页或聊天。
 
-此脚本会安装 Caddy、启用系统服务和定时器，最后执行首次 Gist 发布。需要阿里云安全组开放 TCP 80/443。遇到已有非本项目 Caddy 配置或目标目录时会停止，避免覆盖。
+此脚本不安装 Web 服务器，启用 Gunicorn 直接 TLS 和定时器，最后执行首次 Gist 发布。仅需放行 TCP 8443；不需要 80/443、DNS API 或公网证书。安全组由服务器 `/home/naro/aliyun-security-group-mgr/sgmgr_rules.conf` 管理。变更前先核对云端规则，避免该服务全量同步时顺带修改无关规则。
 
-- 网页管理：`https://narozeol.top/app/`
-- APK：`https://narozeol.top/downloads/thoughts.apk`
+从旧版本升级时，会在新 API 健康检查成功后停用本项目的 Caddy 服务；不会卸载软件或停用其他项目的 Caddy。更新 APK 至 1.0.1（versionCode 2），它使用新的端口和专用证书信任。博客继续由 GitHub Pages 构建发布，API 服务不托管博客。
+
+- App API：`https://narozeol.top:8443/api/`。
+- 辅助网页管理：`https://narozeol.top:8443/app/`。浏览器需要明确导入并信任专用 CA；不要关闭证书校验或忽略警告输入密码。App 自带信任，无需在手机系统中安装 CA。
+- APK：本地 `android/build/thoughts.apk` 或 GitHub Actions 的 APK artifact；服务端不再提供 APK 下载页面。
 - 管理登录信息：服务器 `~/.local/share/naro-thoughts/login.txt`，首次初始化时生成。
 - 服务器数据：`~/.local/share/naro-thoughts/thoughts.sqlite`。
 - 原始 Gist 备份：`~/.local/share/naro-thoughts/backups/legacy-original.json`。
@@ -86,7 +89,7 @@ CI 的模拟器测试验证原生启动、离线保存、列表展示、草稿�
 ## 运维
 
 ```sh
-sudo systemctl status thoughts caddy thoughts-publish.timer thoughts-backup.timer
+sudo systemctl status thoughts thoughts-tls.timer thoughts-publish.timer thoughts-backup.timer
 sudo journalctl -u thoughts -u thoughts-publish --since today
 sudo systemctl start thoughts-publish
 sudo systemctl start thoughts-backup
@@ -103,3 +106,17 @@ ssh -t aliyun 'cd ~/.local/share/naro-thoughts/app && PYTHONPATH=$HOME/.local/sh
 更换 Gist token：在服务器执行 `python3 ~/.local/share/naro-thoughts/deploy/configure-gist.py`。
 
 恢复备份时，先停止 API 与发布定时器并另存当前数据库及 WAL，再替换数据库、恢复 `naro:naro` 所有权和 `0600` 权限，启动服务。避免直接覆盖运行中的 SQLite 文件。
+
+## TLS 与证书维护
+
+Gunicorn 使用 1 个 worker、4 个线程直接提供 TLS，移除反向代理信任。Android 用系统 Network Security Configuration，仅对 `narozeol.top` 信任内置 CA，保持域名校验和禁止明文连接；不使用跳过校验的 TrustManager。
+
+CA 有效期 10 年，服务器证书有效期 397 天。每日定时检查，剩余不足 30 天时签发新服务器证书，并通过 HUP 平滑重载 Gunicorn。续期不会改变 App 的 CA 信任，不需要更新 APK。根 CA 到期前至少 400 天脚本会报错，届时需要先发布带新旧 CA 的 App 过渡版本，再轮换根 CA，不能直接删除重建。
+
+`tls/ca.key` 和 `tls/server.key` 均以 0600 保存在服务器上，绝不进入仓库、APK 或 CI。请单独安全备份整个 `tls/` 目录（数据库定时备份不含私钥）。`android/res/raw/thoughts_ca.crt` 只有公开证书，可以提交。
+
+命令行检查：
+
+```sh
+curl --cacert tools/thoughts/android/res/raw/thoughts_ca.crt https://narozeol.top:8443/api/health
+```

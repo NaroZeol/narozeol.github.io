@@ -55,6 +55,7 @@ public final class SmokeTest extends Instrumentation {
     Bundle result = new Bundle();
     MainActivity activity = null;
     try {
+      checkAppTrust();
       Store store = new Store(getTargetContext());
       store.clear();
       new Account(getTargetContext()).clear();
@@ -163,5 +164,35 @@ public final class SmokeTest extends Instrumentation {
         runOnMainSync(() -> screen.finish());
       }
     }
+  }
+
+  private void checkAppTrust() throws Exception {
+    int resource = getTargetContext().getResources().getIdentifier(
+      "thoughts_ca", "raw", getTargetContext().getPackageName()
+    );
+    java.security.cert.X509Certificate ca;
+    try (java.io.InputStream in = getTargetContext().getResources().openRawResource(resource)) {
+      ca = (java.security.cert.X509Certificate) java.security.cert.CertificateFactory
+        .getInstance("X.509").generateCertificate(in);
+    }
+    ca.checkValidity();
+    javax.net.ssl.TrustManagerFactory factory = javax.net.ssl.TrustManagerFactory.getInstance(
+      javax.net.ssl.TrustManagerFactory.getDefaultAlgorithm()
+    );
+    factory.init((java.security.KeyStore) null);
+    android.net.http.X509TrustManagerExtensions trust = new android.net.http.X509TrustManagerExtensions(
+      (javax.net.ssl.X509TrustManager) factory.getTrustManagers()[0]
+    );
+    java.security.cert.X509Certificate[] chain = {ca};
+    trust.checkServerTrusted(chain, "ECDHE_ECDSA", "narozeol.top");
+    boolean rejected = false;
+    try {
+      trust.checkServerTrusted(chain, "ECDHE_ECDSA", "unrelated.example");
+    } catch (java.security.cert.CertificateException expected) {
+      rejected = true;
+    }
+    check(rejected, "App CA trust must be restricted to narozeol.top");
+    check(!android.security.NetworkSecurityPolicy.getInstance().isCleartextTrafficPermitted("narozeol.top"),
+      "App must reject unencrypted traffic");
   }
 }

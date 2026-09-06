@@ -1,0 +1,8 @@
+[Unit]
+Description=Renew Thoughts private server certificate
+
+[Service]
+Type=oneshot
+ExecStart=/usr/sbin/runuser -u naro -- /bin/bash /home/naro/.local/share/naro-thoughts/deploy/tls.sh
+ExecStartPost=/bin/systemctl reload thoughts.service
+UMask=0077

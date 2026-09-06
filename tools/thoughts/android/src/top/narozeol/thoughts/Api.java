@@ -8,7 +8,7 @@ import org.json.JSONObject;
 
 final class Api {
 
-  static final String ORIGIN = "https://narozeol.top";
+  static final String ORIGIN = "https://narozeol.top:8443";
 
   static final class Failure extends Exception {
 
