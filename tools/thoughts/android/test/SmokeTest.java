@@ -129,7 +129,14 @@ public final class SmokeTest extends Instrumentation {
         });
         android.os.SystemClock.sleep(600);
         screenshot("keyboard");
-        result.putString("stream", "PASS: visual review captured\n");
+        result.putString(
+          "stream",
+          "PASS: visual review captured; widthDp=" +
+            getTargetContext().getResources().getConfiguration().screenWidthDp +
+            "; fontScale=" +
+            getTargetContext().getResources().getConfiguration().fontScale +
+            "\n"
+        );
         finish(-1, result);
       } catch (Throwable error) {
         result.putString(

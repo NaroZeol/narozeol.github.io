@@ -7,6 +7,9 @@ final class Sync {
 
   static String run(Store store, Account account) throws Exception {
     if (!account.isVerified()) return "已保存在手机 · 连接设备后同步";
+    if (
+      !account.can("thoughts")
+    ) return "此设备未获想法同步权限，本机记录已保留";
     int conflicts = 0;
     for (Store.Entry entry : store.entries()) {
       if (entry.pending == null) continue;

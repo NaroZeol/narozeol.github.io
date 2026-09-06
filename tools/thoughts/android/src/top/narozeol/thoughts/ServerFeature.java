@@ -77,6 +77,14 @@ final class ServerFeature extends Ui implements Feature {
       );
       return;
     }
+    if (!account.can("system.read")) {
+      card(
+        surface,
+        "尚未授予状态读取权限",
+        "这台设备可以使用已授权的功能。需要查看服务器状态时，由管理员增加 system.read 权限后重新验证连接。"
+      );
+      return;
+    }
     if (snapshot == null) {
       card(
         surface,
@@ -104,6 +112,12 @@ final class ServerFeature extends Ui implements Feature {
       );
       row(publishing, "发布队列", pending ? "待发布" : "已同步");
       if (pending) {
+        if (!publication.isNull("last_error")) {
+          space(publishing, 10);
+          publishing.addView(
+            text(publication.optString("last_error"), 13, ALERT)
+          );
+        }
         space(publishing, 12);
         publishing.addView(button("重试发布", () -> host.sync(), false));
       }
@@ -152,22 +166,44 @@ final class ServerFeature extends Ui implements Feature {
         JSONObject session = Api.request("/session", "GET", null);
         account.verified(session);
         if (account.can("system.read")) {
-          snapshot = Api.request("/system", "GET", null);
-          checkedAt = System.currentTimeMillis();
-          activity
-            .getSharedPreferences("server_status", 0)
-            .edit()
-            .putString("snapshot", snapshot.toString())
-            .putLong("checked_at", checkedAt)
-            .apply();
+          readSnapshot();
         }
         runOnUiThread(() -> {
-          status("设备验证通过，可以同步想法");
-          host.sync();
+          status("设备验证通过");
+          if (account.can("thoughts")) host.sync();
         });
       } catch (Exception e) {
         problem = errorMessage(e);
         runOnUiThread(() -> status(problem));
+      } finally {
+        loading = false;
+        runOnUiThread(() -> {
+          if (host.activeFeature().equals(id())) host.redraw();
+        });
+      }
+    });
+  }
+
+  private void readSnapshot() throws Exception {
+    snapshot = Api.request("/system", "GET", null);
+    checkedAt = System.currentTimeMillis();
+    activity
+      .getSharedPreferences("server_status", 0)
+      .edit()
+      .putString("snapshot", snapshot.toString())
+      .putLong("checked_at", checkedAt)
+      .apply();
+  }
+
+  public void refresh() {
+    if (loading || !account.isVerified() || !account.can("system.read")) return;
+    loading = true;
+    IO.execute(() -> {
+      try {
+        readSnapshot();
+        problem = "";
+      } catch (Exception e) {
+        problem = errorMessage(e);
       } finally {
         loading = false;
         runOnUiThread(() -> {

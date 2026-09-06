@@ -232,6 +232,21 @@ public final class MainActivity extends Activity implements Feature.Host {
       nav.addView(button, params);
     }
     root.addView(nav);
+    // Give the editor the available height while typing; navigation returns with the keyboard dismissed.
+    TextView screenStatus = statusView;
+    root.getViewTreeObserver().addOnGlobalLayoutListener(() -> {
+      android.graphics.Rect visible = new android.graphics.Rect();
+      root.getWindowVisibleDisplayFrame(visible);
+      boolean keyboard =
+        getResources().getDisplayMetrics().heightPixels - visible.height() >
+        ui.dp(160);
+      int visibility = keyboard ? View.GONE : View.VISIBLE;
+      if (nav.getVisibility() != visibility) {
+        nav.setVisibility(visibility);
+        header.setVisibility(visibility);
+        screenStatus.setVisibility(visibility);
+      }
+    });
     setContentView(root);
   }
 
