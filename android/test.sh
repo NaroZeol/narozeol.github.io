@@ -25,5 +25,8 @@ if [[ "${THOUGHTS_COMPILE_TEST_ONLY:-0}" != 1 ]]; then
   adb install -r build/thoughts.apk
   adb install -r build/test/tests.apk
   adb shell am instrument -w top.narozeol.thoughts.test/top.narozeol.thoughts.SmokeTest | tee build/test/result.txt
-  grep -q 'PASS: native launch' build/test/result.txt
+  if ! grep -q 'PASS: native launch' build/test/result.txt; then
+    adb logcat -d -b crash
+    exit 1
+  fi
 fi
