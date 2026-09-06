@@ -7,7 +7,9 @@ cd "$(dirname "$0")"
 : "${THOUGHTS_KEYSTORE:?Set THOUGHTS_KEYSTORE to a private signing keystore}"
 : "${THOUGHTS_KEYSTORE_PASSWORD_FILE:?Set THOUGHTS_KEYSTORE_PASSWORD_FILE to its private password file}"
 export PATH="$JAVA_HOME/bin:$PATH"
+rm -rf build/generated build/classes build/dex
 mkdir -p build/generated build/classes build/dex
+bash dependencies.sh
 python3 - <<'PY'
 import os, shutil
 from pathlib import Path
@@ -22,11 +24,11 @@ if os.environ.get('THOUGHTS_PREVIEW') == '1':
 Path('build/AndroidManifest.xml').write_text(manifest)
 PY
 "$ANDROID_BUILD_TOOLS/aapt2" compile --dir build/res -o build/resources.zip
-"$ANDROID_BUILD_TOOLS/aapt2" link -o build/unsigned.apk -I "$ANDROID_JAR" --manifest build/AndroidManifest.xml --java build/generated build/resources.zip
+"$ANDROID_BUILD_TOOLS/aapt2" link -o build/unsigned.apk -I "$ANDROID_JAR" --manifest build/AndroidManifest.xml -A assets --java build/generated build/resources.zip
 find src build/generated -name '*.java' -print > build/sources.txt
-javac -encoding UTF-8 -source 8 -target 8 -bootclasspath "$ANDROID_JAR:$ANDROID_BUILD_TOOLS/core-lambda-stubs.jar" -d build/classes @build/sources.txt
+javac -classpath build/deps/jsch-android.jar -encoding UTF-8 -source 8 -target 8 -bootclasspath "$ANDROID_JAR:$ANDROID_BUILD_TOOLS/core-lambda-stubs.jar" -d build/classes @build/sources.txt
 jar cf build/classes.jar -C build/classes .
-"$ANDROID_BUILD_TOOLS/d8" --release --min-api 26 --lib "$ANDROID_JAR" --output build/dex build/classes.jar
+"$ANDROID_BUILD_TOOLS/d8" --release --min-api 26 --lib "$ANDROID_JAR" --output build/dex build/classes.jar build/deps/jsch-android.jar
 python3 - <<'PY'
 from zipfile import ZipFile, ZIP_DEFLATED
 from pathlib import Path

@@ -6,8 +6,7 @@ import org.json.JSONObject;
 final class Sync {
 
   static String run(Store store, Account account) throws Exception {
-    String token = account.token();
-    if (token.isEmpty()) return "已保存在手机 · 登录后同步";
+    if (!account.isVerified()) return "已保存在手机 · 连接设备后同步";
     int conflicts = 0;
     for (Store.Entry entry : store.entries()) {
       if (entry.pending == null) continue;
@@ -32,7 +31,7 @@ final class Sync {
         .put("version", entry.note.getInt("version"))
         .put("restore", true);
       try {
-        store.acknowledge(entry, Api.request(path, method, body, token));
+        store.acknowledge(entry, Api.request(path, method, body));
       } catch (Api.Failure e) {
         if (e.code == 409 || e.code == 400) {
           store.conflict(entry, e.getMessage());
@@ -46,8 +45,7 @@ final class Sync {
       JSONObject page = Api.request(
         "/thoughts?all=1&limit=200&offset=" + offset,
         "GET",
-        null,
-        token
+        null
       );
       JSONArray items = page.getJSONArray("items");
       for (int i = 0; i < items.length(); i++) all.put(items.getJSONObject(i));
@@ -58,12 +56,7 @@ final class Sync {
     int pending = 0;
     for (Store.Entry entry : store.entries())
       if (entry.pending != null) pending++;
-    JSONObject publication = Api.request(
-      "/publish",
-      "POST",
-      new JSONObject(),
-      token
-    );
+    JSONObject publication = Api.request("/publish", "POST", new JSONObject());
     if (conflicts > 0) return conflicts + " 条记录需要处理冲突，本地内容已保留";
     if (pending > 0) return pending + " 条待同步，点同步继续";
     if (publication.getBoolean("pending")) return (

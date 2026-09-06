@@ -29,7 +29,18 @@ final class Store extends SQLiteOpenHelper {
   }
 
   Store(Context context) {
-    super(context.getApplicationContext(), "thoughts.db", null, 1);
+    this(context, ServerProfile.ALIYUN);
+  }
+
+  Store(Context context, ServerProfile profile) {
+    super(
+      context.getApplicationContext(),
+      profile.id.equals("aliyun")
+        ? "thoughts.db"
+        : "thoughts-" + profile.id + ".db",
+      null,
+      1
+    );
     setWriteAheadLoggingEnabled(true);
   }
 

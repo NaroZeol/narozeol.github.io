@@ -1,0 +1,484 @@
+package top.narozeol.thoughts;
+
+import android.app.AlertDialog;
+import android.content.Intent;
+import android.content.SharedPreferences;
+import android.graphics.Color;
+import android.graphics.Typeface;
+import android.os.Handler;
+import android.os.Looper;
+import android.view.Gravity;
+import android.widget.*;
+import org.json.JSONArray;
+import org.json.JSONObject;
+
+/** Capture and browsing share the same draft/store controller, isolated from server features. */
+final class ThoughtsModule extends Ui {
+
+  private final SharedPreferences drafts;
+  private LinearLayout surface, feed;
+  private EditText content, tags, search;
+  private String editingId = null,
+    filter = "all";
+  private int editingVersion = 0;
+  private boolean restoring = false;
+  private final Handler handler = new Handler(Looper.getMainLooper());
+  private final Runnable persistDraft = () -> saveDraft();
+
+  ThoughtsModule(Feature.Host host) {
+    super(host);
+    drafts = activity.getSharedPreferences("draft", 0);
+  }
+
+  Feature screen(String id, String label) {
+    return new Feature() {
+      public String id() {
+        return id;
+      }
+
+      public String label() {
+        return label;
+      }
+
+      public void render(LinearLayout parent) {
+        surface = parent;
+        if (id.equals("capture")) capture();
+        else notes();
+      }
+
+      public void leave() {
+        saveDraft();
+        content = null;
+        tags = null;
+        feed = null;
+        search = null;
+      }
+
+      public void refresh() {
+        renderFeed();
+      }
+    };
+  }
+
+  void receiveShare(Intent intent) {
+    if (!Intent.ACTION_SEND.equals(intent.getAction())) return;
+    String value = intent.getStringExtra(Intent.EXTRA_TEXT);
+    if (value != null) {
+      host.navigate("capture");
+      String previous = content.getText().toString();
+      content.setText(previous.isEmpty() ? value : previous + "\n\n" + value);
+      saveDraft();
+    }
+    intent.setAction(null);
+  }
+
+  private void capture() {
+    restoring = true;
+    editingId = drafts.getString("id", null);
+    editingVersion = drafts.getInt("version", 0);
+    TextView heading = text(
+      editingId == null ? "记下这一刻。" : "编辑想法",
+      28,
+      INK
+    );
+    heading.setTypeface(Typeface.create("serif", Typeface.NORMAL));
+    heading(
+      surface,
+      "CAPTURE",
+      editingId == null ? "记下这一刻。" : "编辑想法",
+      "不必完整，先留下值得记住的片段。"
+    );
+    content = input("有什么想法？", true);
+    content.setGravity(Gravity.TOP);
+    content.setMinLines(7);
+    content.setMaxLines(14);
+    content.setLineSpacing(dp(6), 1);
+    content.setFilters(new android.text.InputFilter[] {
+      new android.text.InputFilter.LengthFilter(20000),
+    });
+    content.setText(drafts.getString("content", ""));
+    content.setContentDescription("想法内容");
+    surface.addView(content, new LinearLayout.LayoutParams(-1, -2));
+    space(surface, 16);
+    tags = input("标签，用逗号分隔", false);
+    tags.setContentDescription("标签，用逗号分隔");
+    tags.setText(drafts.getString("tags", ""));
+    surface.addView(tags);
+    space(surface, 10);
+    surface.addView(button("保存并发布  ↗", () -> saveNote(), true));
+    if (editingId != null) {
+      space(surface, 10);
+      surface.addView(
+        button(
+          "取消编辑",
+          () ->
+            new AlertDialog.Builder(activity)
+              .setMessage("丢弃当前编辑草稿？")
+              .setNegativeButton("保留", null)
+              .setPositiveButton("丢弃", (d, w) -> {
+                drafts.edit().clear().commit();
+                content = null;
+                host.navigate("capture");
+              })
+              .show(),
+          false
+        )
+      );
+    }
+    space(surface, 16);
+    if (!account.isVerified()) {
+      LinearLayout onboarding = card(
+        surface,
+        "先记录，稍后连接",
+        "内容会保存在这台手机。登记设备后即可加密同步。"
+      );
+      space(onboarding, 12);
+      onboarding.addView(
+        button("设置设备连接", () -> host.navigate("server"), false)
+      );
+    }
+    surface.addView(
+      text("全部想法公开 · 离线时先保存，联网同步后发布", 12, MUTED)
+    );
+    content.addTextChangedListener(watcher(() -> scheduleDraft()));
+    tags.addTextChangedListener(watcher(() -> scheduleDraft()));
+    restoring = false;
+  }
+
+  private void scheduleDraft() {
+    if (!restoring) {
+      handler.removeCallbacks(persistDraft);
+      handler.postDelayed(persistDraft, 250);
+    }
+  }
+
+  void saveDraft() {
+    handler.removeCallbacks(persistDraft);
+    if (content != null && tags != null && !restoring) {
+      boolean ok = drafts
+        .edit()
+        .putString("content", content.getText().toString())
+        .putString("tags", tags.getText().toString())
+        .putString("id", editingId)
+        .putInt("version", editingVersion)
+        .commit();
+      if (!ok) status("草稿写入失败，请复制内容备份");
+    }
+  }
+
+  private void saveNote() {
+    try {
+      String body = content.getText().toString().trim();
+      if (body.isEmpty()) throw new Exception("先写下一点想法吧");
+      JSONArray list = new JSONArray();
+      java.util.LinkedHashSet<String> unique = new java.util.LinkedHashSet<>();
+      for (String tag : tags.getText().toString().split("[,，]")) {
+        String t = tag.trim();
+        if (t.length() > 30) throw new Exception("每个标签最多 30 字");
+        if (!t.isEmpty()) unique.add(t);
+      }
+      if (unique.size() > 12) throw new Exception("最多添加 12 个标签");
+      for (String tag : unique) list.put(tag);
+      store.save(editingId, body, list, editingVersion);
+      handler.removeCallbacks(persistDraft);
+      drafts.edit().clear().commit();
+      content = null;
+      tags = null;
+      editingId = null;
+      editingVersion = 0;
+      host.redraw();
+      status("已保存到手机 · 等待同步");
+      sync();
+    } catch (Exception e) {
+      saveDraft();
+      status(e.getMessage());
+    }
+  }
+
+  private void notes() {
+    TextView title = text("我的想法", 24, INK);
+    heading(surface, "YOUR NOTES", "我的想法", "让零散的念头，有迹可循。");
+    search = input("搜索内容或标签", false);
+    search.setContentDescription("搜索想法");
+    surface.addView(search);
+    space(surface, 12);
+    LinearLayout filters = new LinearLayout(activity);
+    String[][] choices = {
+      { "all", "全部" },
+      { "pending", "待同步" },
+      { "conflict", "冲突" },
+      { "trash", "回收站" },
+    };
+    for (String[] item : choices) {
+      Button b = button(
+        item[1],
+        () -> {
+          filter = item[0];
+          notesRebuild();
+        },
+        false
+      );
+      b.setTextColor(filter.equals(item[0]) ? BLUE : MUTED);
+      LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(0, dp(44), 1);
+      p.setMargins(dp(2), 0, dp(2), 0);
+      filters.addView(b, p);
+    }
+    surface.addView(filters);
+    space(surface, 10);
+    feed = column();
+    surface.addView(feed);
+    search.addTextChangedListener(watcher(() -> renderFeed()));
+    renderFeed();
+  }
+
+  private void notesRebuild() {
+    String query = search.getText().toString();
+    surface.removeAllViews();
+    notes();
+    search.setText(query);
+  }
+
+  void renderFeed() {
+    if (feed == null || !host.activeFeature().equals("notes")) return;
+    feed.removeAllViews();
+    try {
+      String query = search
+        .getText()
+        .toString()
+        .toLowerCase(java.util.Locale.ROOT);
+      int count = 0;
+      for (Store.Entry entry : store.entries()) {
+        JSONObject note = entry.note;
+        boolean deleted = !note.isNull("deleted_at");
+        if (filter.equals("trash") ? !deleted : deleted) continue;
+        if (filter.equals("pending") && entry.pending == null) continue;
+        if (filter.equals("conflict") && entry.error == null) continue;
+        if (
+          !(note.optString("content") + note.optString("tags"))
+            .toLowerCase(java.util.Locale.ROOT)
+            .contains(query)
+        ) continue;
+        count++;
+        LinearLayout card = column();
+        card.setPadding(dp(16), dp(16), dp(16), dp(12));
+        card.setBackground(background(Color.WHITE, 16));
+        String state =
+          entry.error != null
+            ? "需要处理冲突"
+            : entry.pending != null
+              ? "待同步"
+              : deleted
+                ? "回收站"
+                : "已提交服务器";
+        card.addView(
+          text(
+            formatDate(note.optString("created_at")) + "  ·  " + state,
+            12,
+            entry.error != null ? Color.rgb(160, 54, 44) : MUTED
+          )
+        );
+        space(card, 12);
+        TextView body = text(note.optString("content"), 16, INK);
+        body.setMaxLines(5);
+        body.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        card.addView(body);
+        JSONArray tags = note.optJSONArray("tags");
+        if (tags != null && tags.length() > 0) {
+          space(card, 10);
+          StringBuilder line = new StringBuilder();
+          for (int i = 0; i < tags.length(); i++) line
+            .append("#")
+            .append(tags.optString(i))
+            .append("  ");
+          card.addView(text(line.toString(), 12, BLUE));
+        }
+        space(card, 12);
+        card.setOnClickListener(v -> openNote(entry));
+        card.setOnLongClickListener(v -> {
+          manage(entry);
+          return true;
+        });
+        card.setContentDescription(
+          note.optString("content") + "，点击查看，长按管理"
+        );
+        card.setFocusable(true);
+        LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(-1, -2);
+        p.setMargins(0, 0, 0, dp(12));
+        feed.addView(card, p);
+      }
+      if (count == 0) {
+        space(feed, 28);
+        feed.addView(
+          text(
+            query.isEmpty() ? "这里还没有想法。" : "没有找到相关想法。",
+            14,
+            MUTED
+          )
+        );
+      }
+    } catch (Exception e) {
+      status("读取本机记录失败，请先导出备份");
+    }
+  }
+
+  private String formatDate(String value) {
+    try {
+      return java.time.OffsetDateTime.parse(value)
+        .atZoneSameInstant(java.time.ZoneId.systemDefault())
+        .format(
+          java.time.format.DateTimeFormatter.ofPattern("yyyy.MM.dd HH:mm")
+        );
+    } catch (Exception e) {
+      return value;
+    }
+  }
+
+  private void openNote(Store.Entry entry) {
+    ScrollView scroll = new ScrollView(activity);
+    TextView body = text(entry.note.optString("content"), 16, INK);
+    body.setTextIsSelectable(true);
+    body.setPadding(dp(24), dp(16), dp(24), dp(16));
+    scroll.addView(body);
+    new AlertDialog.Builder(activity)
+      .setTitle(entry.error != null ? "本地内容已保留" : "想法")
+      .setView(scroll)
+      .setNegativeButton("关闭", null)
+      .setNeutralButton("复制", (d, w) -> copy(entry.note.optString("content")))
+      .setPositiveButton("管理", (d, w) -> manage(entry))
+      .show();
+  }
+
+  private void manage(Store.Entry entry) {
+    if (entry.error != null) {
+      new AlertDialog.Builder(activity)
+        .setTitle("同步冲突")
+        .setMessage(
+          entry.error +
+            "\n\n保留为新想法后将会发布，同时重新拉取服务器上的原记录。"
+        )
+        .setNegativeButton("稍后处理", null)
+        .setPositiveButton("保留为新想法并发布", (d, w) -> {
+          try {
+            store.keepConflictAsCopy(entry);
+            renderFeed();
+            sync();
+          } catch (Exception e) {
+            status(e.getMessage());
+          }
+        })
+        .show();
+      return;
+    }
+    boolean deleted = !entry.note.isNull("deleted_at");
+    String[] actions = deleted
+      ? new String[] { "恢复并发布", "编辑历史" }
+      : new String[] { "编辑", "移到回收站", "编辑历史" };
+    new AlertDialog.Builder(activity)
+      .setTitle("管理想法")
+      .setItems(actions, (d, index) -> {
+        if ((deleted && index == 1) || (!deleted && index == 2)) {
+          history(entry);
+          return;
+        }
+        if (!deleted && index == 0) {
+          if (
+            entry.pending != null &&
+            !entry.pending.equals("create") &&
+            !entry.pending.equals("update")
+          ) {
+            status("请先完成同步");
+            return;
+          }
+          Runnable edit = () -> {
+            drafts
+              .edit()
+              .putString("id", entry.note.optString("id"))
+              .putInt("version", entry.note.optInt("version"))
+              .putString("content", entry.note.optString("content"))
+              .putString("tags", joinTags(entry.note.optJSONArray("tags")))
+              .commit();
+            host.navigate("capture");
+          };
+          if (
+            !drafts.getString("content", "").trim().isEmpty()
+          ) new AlertDialog.Builder(activity)
+            .setMessage("当前有未保存的草稿，要用这条想法替换吗？")
+            .setNegativeButton("保留草稿", null)
+            .setPositiveButton("替换", (a, b) -> edit.run())
+            .show();
+          else edit.run();
+          return;
+        }
+        new AlertDialog.Builder(activity)
+          .setMessage(
+            deleted ? "恢复后会重新发布到博客。" : "移到回收站？之后仍可恢复。"
+          )
+          .setNegativeButton("取消", null)
+          .setPositiveButton("确定", (a, b) -> {
+            try {
+              store.removeOrRestore(entry, deleted);
+              renderFeed();
+              sync();
+            } catch (Exception e) {
+              status(e.getMessage());
+            }
+          })
+          .show();
+      })
+      .show();
+  }
+
+  private String joinTags(JSONArray tags) {
+    StringBuilder result = new StringBuilder();
+    if (tags != null) for (int i = 0; i < tags.length(); i++) {
+      if (i > 0) result.append(", ");
+      result.append(tags.optString(i));
+    }
+    return result.toString();
+  }
+
+  private void history(Store.Entry entry) {
+    status("正在读取编辑历史…");
+    IO.execute(() -> {
+      try {
+        JSONArray items = Api.request(
+          "/thoughts/" + entry.note.getString("id") + "/history",
+          "GET",
+          null
+        ).getJSONArray("items");
+        StringBuilder body = new StringBuilder();
+        for (int i = 0; i < items.length(); i++) {
+          JSONObject row = items.getJSONObject(i),
+            note = row.getJSONObject("item");
+          body
+            .append("版本 ")
+            .append(note.getInt("version"))
+            .append(" · ")
+            .append(formatDate(row.getString("saved_at")))
+            .append("\n\n")
+            .append(note.getString("content"))
+            .append("\n\n────────\n\n");
+        }
+        runOnUiThread(() -> {
+          TextView text = text(
+            items.length() == 0 ? "还没有编辑历史。" : body.toString(),
+            15,
+            INK
+          );
+          text.setPadding(dp(20), dp(12), dp(20), dp(12));
+          text.setTextIsSelectable(true);
+          ScrollView scroll = new ScrollView(activity);
+          scroll.addView(text);
+          new AlertDialog.Builder(activity)
+            .setTitle("编辑历史")
+            .setView(scroll)
+            .setPositiveButton("关闭", null)
+            .show();
+          status("历史已加载");
+        });
+      } catch (Exception e) {
+        runOnUiThread(() -> status(errorMessage(e)));
+      }
+    });
+  }
+}

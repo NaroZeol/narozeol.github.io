@@ -3,6 +3,7 @@ import hashlib
 import json
 import os
 import secrets
+import shutil
 import sqlite3
 import time
 import uuid
@@ -164,6 +165,23 @@ def create_app(config=None):
     @authenticated
     def session():
         return jsonify(ok=True)
+
+    @app.get("/api/system")
+    @authenticated
+    def system_status():
+        root = Path(app.config["DATABASE"]).parent
+        backups = sorted((root / "backups").glob("thoughts-????????-??????.sqlite"))
+        latest = backups[-1] if backups else None
+        counts = db().execute("SELECT COUNT(*) AS total, SUM(deleted_at IS NOT NULL) AS trash FROM thoughts").fetchone()
+        publication = dict(db().execute("SELECT * FROM publication WHERE id=1").fetchone())
+        return jsonify(
+            protocol_version=1, service="想法", version="1.2.0",
+            capabilities=["thoughts", "system.read"],
+            records={"active": counts["total"] - (counts["trash"] or 0), "trash": counts["trash"] or 0},
+            publication=publication,
+            storage={"database_bytes": Path(app.config["DATABASE"]).stat().st_size, "free_bytes": shutil.disk_usage(root).free},
+            backup={"count": len(backups), "latest_at": datetime.fromtimestamp(latest.stat().st_mtime, timezone.utc).isoformat() if latest else None},
+        )
 
     @app.post("/api/logout")
     @authenticated

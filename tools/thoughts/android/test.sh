@@ -2,6 +2,7 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 export PATH="$JAVA_HOME/bin:$PATH"
+rm -rf build/test/classes build/test/dex
 mkdir -p build/test/classes build/test/dex
 python3 - <<'PY'
 from pathlib import Path
@@ -12,7 +13,7 @@ if os.environ.get('THOUGHTS_PREVIEW')=='1':
 Path('build/test/AndroidManifest.xml').write_text(s)
 PY
 "$ANDROID_BUILD_TOOLS/aapt2" link -o build/test/unsigned.apk -I "$ANDROID_JAR" --manifest build/test/AndroidManifest.xml
-javac -encoding UTF-8 -source 8 -target 8 -bootclasspath "$ANDROID_JAR:$ANDROID_BUILD_TOOLS/core-lambda-stubs.jar" -classpath build/classes -d build/test/classes test/SmokeTest.java
+javac -encoding UTF-8 -source 8 -target 8 -bootclasspath "$ANDROID_JAR:$ANDROID_BUILD_TOOLS/core-lambda-stubs.jar" -classpath build/classes:build/deps/jsch-android.jar -d build/test/classes test/SmokeTest.java
 jar cf build/test/classes.jar -C build/test/classes .
 "$ANDROID_BUILD_TOOLS/d8" --release --min-api 26 --lib "$ANDROID_JAR" --classpath build/classes.jar --output build/test/dex build/test/classes.jar
 python3 - <<'PY'
@@ -24,7 +25,17 @@ PY
 if [[ "${THOUGHTS_COMPILE_TEST_ONLY:-0}" != 1 ]]; then
   adb install -r build/thoughts.apk
   adb install -r build/test/tests.apk
-  adb shell am instrument -w top.narozeol.thoughts.test/top.narozeol.thoughts.SmokeTest | tee build/test/result.txt
+  ssh_args=()
+  if [[ "${THOUGHTS_SSH_TEST:-0}" == 1 ]]; then
+    adb shell am instrument -w -e mode key top.narozeol.thoughts.test/top.narozeol.thoughts.SmokeTest > build/test/key-result.txt
+    sed -n 's/^.*DEVICE_PUBLIC_KEY: //p' build/test/key-result.txt > build/test/device.pub
+    python3 "$HOME/.local/share/naro-thoughts/deploy/register-device.py" --key-file build/test/device.pub --name CI-emulator
+    ssh_args=(-e ssh_host_key "$(cut -d' ' -f2 build/ssh-fixture/host.pub)" -e ssh_wrong_host_key "$(cut -d' ' -f2 build/ssh-fixture/wrong-host.pub)" -e ssh_user "$(id -un)")
+  fi
+  adb shell am instrument -w "${ssh_args[@]}" top.narozeol.thoughts.test/top.narozeol.thoughts.SmokeTest | tee build/test/result.txt
+  apk_package=top.narozeol.thoughts
+  [[ "${THOUGHTS_PREVIEW:-0}" == 1 ]] && apk_package=top.narozeol.thoughts.preview
+  adb pull "/sdcard/Android/data/$apk_package/files/screenshots" build/test/ || true
   if ! grep -q 'PASS: native launch' build/test/result.txt; then
     adb logcat -d -b crash
     exit 1

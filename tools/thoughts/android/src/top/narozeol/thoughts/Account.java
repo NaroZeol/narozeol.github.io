@@ -2,80 +2,51 @@ package top.narozeol.thoughts;
 
 import android.content.Context;
 import android.content.SharedPreferences;
-import android.security.keystore.KeyGenParameterSpec;
-import android.security.keystore.KeyProperties;
-import android.util.Base64;
-import java.security.KeyStore;
-import javax.crypto.Cipher;
-import javax.crypto.KeyGenerator;
-import javax.crypto.SecretKey;
-import javax.crypto.spec.GCMParameterSpec;
+import org.json.JSONObject;
 
+/** Local enrollment status only. Authentication always proves possession of DeviceKey. */
 final class Account {
 
-  private static final String ALIAS = "naro-thoughts-session";
   private final SharedPreferences prefs;
 
   Account(Context context) {
     prefs = context.getSharedPreferences("account", Context.MODE_PRIVATE);
   }
 
-  private SecretKey key() throws Exception {
-    KeyStore store = KeyStore.getInstance("AndroidKeyStore");
-    store.load(null);
-    if (!store.containsAlias(ALIAS)) {
-      KeyGenerator generator = KeyGenerator.getInstance(
-        KeyProperties.KEY_ALGORITHM_AES,
-        "AndroidKeyStore"
-      );
-      generator.init(
-        new KeyGenParameterSpec.Builder(
-          ALIAS,
-          KeyProperties.PURPOSE_ENCRYPT | KeyProperties.PURPOSE_DECRYPT
-        )
-          .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
-          .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
-          .build()
-      );
-      generator.generateKey();
-    }
-    return (SecretKey) store.getKey(ALIAS, null);
+  boolean isVerified() {
+    return prefs.getBoolean("ssh_registered", false);
   }
 
-  void save(String token) throws Exception {
-    Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
-    cipher.init(Cipher.ENCRYPT_MODE, key());
-    if (
-      !prefs
-        .edit()
-        .putString(
-          "token",
-          Base64.encodeToString(
-            cipher.doFinal(token.getBytes("UTF-8")),
-            Base64.NO_WRAP
-          )
-        )
-        .putString("iv", Base64.encodeToString(cipher.getIV(), Base64.NO_WRAP))
-        .commit()
-    ) throw new Exception("无法保存登录信息");
-  }
-
-  String token() throws Exception {
-    String encoded = prefs.getString("token", null);
-    if (encoded == null) return "";
-    Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
-    cipher.init(
-      Cipher.DECRYPT_MODE,
-      key(),
-      new GCMParameterSpec(
-        128,
-        Base64.decode(prefs.getString("iv", ""), Base64.NO_WRAP)
+  void verified(JSONObject session) {
+    prefs
+      .edit()
+      .putBoolean("ssh_registered", true)
+      .putString(
+        "capabilities",
+        session.optJSONArray("capabilities") == null
+          ? "[]"
+          : session.optJSONArray("capabilities").toString()
       )
-    );
-    return new String(
-      cipher.doFinal(Base64.decode(encoded, Base64.NO_WRAP)),
-      "UTF-8"
-    );
+      .putLong("verified_at", System.currentTimeMillis())
+      .commit();
+  }
+
+  boolean can(String capability) {
+    return prefs
+      .getString("capabilities", "[]")
+      .contains("\"" + capability + "\"");
+  }
+
+  void recordSync(String message) {
+    prefs
+      .edit()
+      .putString("sync_message", message)
+      .putLong("sync_at", System.currentTimeMillis())
+      .apply();
+  }
+
+  String lastSync() {
+    return prefs.getString("sync_message", "尚未同步");
   }
 
   void clear() {
