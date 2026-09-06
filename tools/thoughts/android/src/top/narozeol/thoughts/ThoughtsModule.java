@@ -46,6 +46,24 @@ final class ThoughtsModule extends Ui {
         else notes();
       }
 
+      public String headerAction() {
+        return "同步 ↻";
+      }
+
+      public void performHeaderAction() {
+        host.sync();
+      }
+
+      public void renderFooter(LinearLayout footer) {
+        if (!id.equals("capture")) return;
+        space(footer, 8);
+        footer.addView(button("保存并发布  ↗", () -> saveNote(), true));
+        space(footer, 8);
+        TextView hint = text("全部公开 · 离线时先保存在手机", 12, MUTED);
+        hint.setGravity(Gravity.CENTER);
+        footer.addView(hint);
+      }
+
       public void leave() {
         saveDraft();
         content = null;
@@ -84,7 +102,7 @@ final class ThoughtsModule extends Ui {
     );
     content = input("有什么想法？", true);
     content.setGravity(Gravity.TOP);
-    content.setMinLines(7);
+    content.setMinLines(5);
     content.setMaxLines(14);
     content.setLineSpacing(dp(6), 1);
     content.setFilters(new android.text.InputFilter[] {
@@ -99,7 +117,6 @@ final class ThoughtsModule extends Ui {
     tags.setText(drafts.getString("tags", ""));
     surface.addView(tags);
     space(surface, 10);
-    surface.addView(button("保存并发布  ↗", () -> saveNote(), true));
     if (editingId != null) {
       space(surface, 10);
       surface.addView(
@@ -131,9 +148,6 @@ final class ThoughtsModule extends Ui {
         button("设置设备连接", () -> host.navigate("server"), false)
       );
     }
-    surface.addView(
-      text("全部想法公开 · 离线时先保存，联网同步后发布", 12, MUTED)
-    );
     content.addTextChangedListener(watcher(() -> scheduleDraft()));
     tags.addTextChangedListener(watcher(() -> scheduleDraft()));
     restoring = false;

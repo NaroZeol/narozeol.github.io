@@ -159,7 +159,13 @@ public final class MainActivity extends Activity implements Feature.Host {
     TextView brand = ui.text("想法", 25, Ui.INK);
     brand.setTypeface(Typeface.create("serif", Typeface.NORMAL));
     header.addView(brand, new LinearLayout.LayoutParams(0, ui.dp(48), 1));
-    header.addView(ui.button("同步 ↻", () -> sync(), false));
+    if (!active.headerAction().isEmpty()) header.addView(
+      ui.button(
+        active.headerAction(),
+        () -> active.performHeaderAction(),
+        false
+      )
+    );
     root.addView(header);
     statusView = ui.text(message, 12, Ui.MUTED);
     statusView.setPadding(0, ui.dp(10), 0, ui.dp(20));
@@ -188,6 +194,10 @@ public final class MainActivity extends Activity implements Feature.Host {
     );
     scroll.addView(frame);
     root.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1));
+    active.render(surface);
+    LinearLayout footer = ui.column();
+    active.renderFooter(footer);
+    root.addView(footer);
     LinearLayout nav = new LinearLayout(this);
     nav.setPadding(0, ui.dp(8), 0, 0);
     for (Feature feature : features.values()) {
@@ -203,7 +213,12 @@ public final class MainActivity extends Activity implements Feature.Host {
       button.setMinWidth(0);
       button.setMinimumWidth(0);
       button.setSelected(selected);
-      button.setBackground(ui.background(selected ? 0xffe5eee7 : Ui.PAPER, 14));
+      android.graphics.drawable.GradientDrawable navBackground = ui.background(
+        selected ? 0xffe5eee7 : Ui.PAPER,
+        14
+      );
+      navBackground.setStroke(0, Ui.PAPER);
+      button.setBackground(navBackground);
       Drawable icon = ui.icon(feature.id(), selected ? Ui.BLUE : Ui.MUTED);
       icon.setBounds(0, 0, ui.dp(22), ui.dp(22));
       button.setCompoundDrawables(null, icon, null, null);
@@ -218,7 +233,6 @@ public final class MainActivity extends Activity implements Feature.Host {
     }
     root.addView(nav);
     setContentView(root);
-    active.render(surface);
   }
 
   public void status(String value) {

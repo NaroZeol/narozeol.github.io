@@ -77,6 +77,7 @@ class Ui {
     b.setText(label);
     b.setTextSize(14);
     b.setAllCaps(false);
+    b.setStateListAnimator(null);
     b.setMinHeight(dp(48));
     b.setTextColor(primary ? WHITE : INK);
     b.setPadding(dp(16), dp(8), dp(16), dp(8));

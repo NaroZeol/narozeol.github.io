@@ -35,6 +35,16 @@ if [[ "${THOUGHTS_COMPILE_TEST_ONLY:-0}" != 1 ]]; then
   adb shell am instrument -w "${ssh_args[@]}" top.narozeol.thoughts.test/top.narozeol.thoughts.SmokeTest | tee build/test/result.txt
   apk_package=top.narozeol.thoughts
   [[ "${THOUGHTS_PREVIEW:-0}" == 1 ]] && apk_package=top.narozeol.thoughts.preview
+  if grep -q 'PASS: native launch' build/test/result.txt; then
+    adb shell am instrument -w -e mode visual -e suffix -standard top.narozeol.thoughts.test/top.narozeol.thoughts.SmokeTest | tee build/test/visual.txt
+    adb shell wm size 960x1920
+    adb shell wm density 480
+    adb shell settings put system font_scale 1.3
+    adb shell am instrument -w -e mode visual -e suffix -compact top.narozeol.thoughts.test/top.narozeol.thoughts.SmokeTest | tee build/test/visual-compact.txt
+    adb shell settings put system font_scale 1.0
+    adb shell wm size reset
+    adb shell wm density reset
+  fi
   adb pull "/sdcard/Android/data/$apk_package/files/screenshots" build/test/ || true
   if ! grep -q 'PASS: native launch' build/test/result.txt; then
     [[ -f build/ssh-fixture/sshd.log ]] && cat build/ssh-fixture/sshd.log

@@ -19,7 +19,7 @@ App 分为记录、想法、服务、设置四个入口：快速输入与草稿�
 - `server/`：Flask + Gunicorn；SQLite 保存记录、历史、会话与发布队列；`ssh_gateway.py` 实现版本化受限 RPC。
 - `deploy/`：设备登记与撤销、systemd 服务、每分钟发布重试、每天备份。
 - 仓库 `assets/js/thoughts.js`：只读 Gist raw URL，搜索与分页在浏览器完成。
-- `.github/workflows/check.yml`：博客构建、API 测试、APK 构建、Android 模拟器与真实 SSH 协议测试。
+- `.github/workflows/{blog,thoughts-server,thoughts-android}.yml`：按目录触发各自检查。文章或博客样式改动不构建 APK；Android 代码、构建配置和共用 SSH 协议实现变化才构建并运行模拟器。内部 PR 使用对应 push 检查，避免重复构建；外部 PR 单独验证。所有工作流保留手动入口。
 
 增加服务器管理功能时，新增独立 Feature 和明确的服务端路由；需要新权限时加入设备 capability 白名单，并由管理员显式授权。现有权限为 `thoughts` 和只读的 `system.read`。不能通过功能模块执行任意 shell、SFTP 或端口转发。设备只发送固定 `thoughts-rpc-v1` 命令及 JSON 请求；网关验证登记、路由、方法和权限后转发到固定本机 API。短期内部会话在请求结束时删除，手机不持有 API bearer token。
 
@@ -84,7 +84,7 @@ bash tools/thoughts/android/build.sh
 
 GitHub Actions 支持 repository secrets `THOUGHTS_KEYSTORE_BASE64` 和 `THOUGHTS_KEYSTORE_PASSWORD`；没有 secrets 时构建独立包名的「想法·预览」，可与正式版共存，不能用于更新正式版。CI 使用临时签名，仅供验证。
 
-模拟器验证离线保存、列表与草稿、同步响应不覆盖新编辑，以及 Android Keystore 签名、受限 SSH 登录、增删改恢复、历史、主机公钥拒绝和权限检查。SSH 测试在临时 CI 服务上运行，不连接生产服务器、不写 Gist；页面截图和日志作为 verification artifact 留存。
+Android 10 / 15 模拟器验证离线保存、列表与草稿、同步响应不覆盖新编辑，以及 Android Keystore 签名、受限 SSH 登录、增删改恢复、历史、主机公钥拒绝和权限检查。SSH 测试在临时 CI 服务上运行，不连接生产服务器、不写 Gist；页面截图和日志作为 verification artifact 留存。
 
 ## 运维
 

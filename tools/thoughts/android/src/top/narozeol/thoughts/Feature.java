@@ -10,6 +10,14 @@ interface Feature {
   String label();
   void render(LinearLayout surface);
 
+  default String headerAction() {
+    return "";
+  }
+
+  default void performHeaderAction() {}
+
+  default void renderFooter(LinearLayout footer) {}
+
   default void leave() {}
 
   default void refresh() {}

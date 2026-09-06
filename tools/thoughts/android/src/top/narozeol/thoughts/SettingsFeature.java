@@ -21,7 +21,7 @@ final class SettingsFeature extends Ui implements Feature {
     heading(
       surface,
       "PREFERENCES",
-      "留给自己的空间",
+      "设备与数据",
       "管理设备、备份数据，了解同步方式。"
     );
     LinearLayout device = card(

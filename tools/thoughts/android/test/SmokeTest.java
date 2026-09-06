@@ -70,6 +70,81 @@ public final class SmokeTest extends Instrumentation {
       }
       return;
     }
+    if ("visual".equals(arguments.getString("mode"))) {
+      try {
+        new Account(getTargetContext()).clear();
+        Store sample = new Store(getTargetContext());
+        sample.clear();
+        sample.save(
+          null,
+          "把博客重新捡起来。想让文字有一个安静、可以慢慢生长的地方。",
+          new JSONArray().put("日常"),
+          0
+        );
+        sample.save(
+          null,
+          "今天散步时想到：好的工具应该让人更愿意开始，而不是把精力花在准备上。",
+          new JSONArray().put("设计").put("随想"),
+          0
+        );
+        getTargetContext()
+          .getSharedPreferences("draft", 0)
+          .edit()
+          .clear()
+          .putString(
+            "content",
+            "给今天留一点空白。\n\n记录不必每次都有答案，有时只是把一个念头好好放下。"
+          )
+          .commit();
+        activity = (MainActivity) startActivitySync(
+          new Intent(getTargetContext(), MainActivity.class).addFlags(
+            Intent.FLAG_ACTIVITY_NEW_TASK
+          )
+        );
+        final MainActivity screen = activity;
+        for (String page : new String[] {
+          "capture",
+          "notes",
+          "server",
+          "settings",
+        }) {
+          runOnMainSync(() -> screen.navigate(page));
+          screenshot(page);
+        }
+        runOnMainSync(() -> {
+          screen.navigate("capture");
+          EditText editor = (EditText) find(
+            screen.getWindow().getDecorView(),
+            "想法内容"
+          );
+          editor.requestFocus();
+          (
+            (android.view.inputmethod.InputMethodManager) screen.getSystemService(
+              android.content.Context.INPUT_METHOD_SERVICE
+            )
+          ).showSoftInput(
+            editor,
+            android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT
+          );
+        });
+        android.os.SystemClock.sleep(600);
+        screenshot("keyboard");
+        result.putString("stream", "PASS: visual review captured\n");
+        finish(-1, result);
+      } catch (Throwable error) {
+        result.putString(
+          "stream",
+          "FAIL: " + android.util.Log.getStackTraceString(error)
+        );
+        finish(1, result);
+      } finally {
+        if (activity != null) {
+          final MainActivity screen = activity;
+          runOnMainSync(() -> screen.finish());
+        }
+      }
+      return;
+    }
     try {
       checkDeviceSignature();
       Store store = new Store(getTargetContext());
@@ -193,6 +268,7 @@ public final class SmokeTest extends Instrumentation {
 
   private void screenshot(String name) throws Exception {
     waitForIdleSync();
+    android.os.SystemClock.sleep(250);
     android.graphics.Bitmap bitmap = getUiAutomation().takeScreenshot();
     java.io.File dir = new java.io.File(
       getTargetContext().getExternalFilesDir(null),
@@ -201,7 +277,7 @@ public final class SmokeTest extends Instrumentation {
     dir.mkdirs();
     try (
       java.io.OutputStream out = new java.io.FileOutputStream(
-        new java.io.File(dir, name + ".png")
+        new java.io.File(dir, name + arguments.getString("suffix", "") + ".png")
       )
     ) {
       bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, out);
