@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+set -euo pipefail
+cd "$(dirname "$0")"
+export PATH="$JAVA_HOME/bin:$PATH"
+mkdir -p build/test/classes build/test/dex
+python3 - <<'PY'
+from pathlib import Path
+import os
+s=Path('test/AndroidManifest.xml').read_text()
+if os.environ.get('THOUGHTS_PREVIEW')=='1':
+    s=s.replace('android:targetPackage="top.narozeol.thoughts"','android:targetPackage="top.narozeol.thoughts.preview"')
+Path('build/test/AndroidManifest.xml').write_text(s)
+PY
+"$ANDROID_BUILD_TOOLS/aapt2" link -o build/test/unsigned.apk -I "$ANDROID_JAR" --manifest build/test/AndroidManifest.xml
+javac -encoding UTF-8 -source 8 -target 8 -bootclasspath "$ANDROID_JAR:$ANDROID_BUILD_TOOLS/core-lambda-stubs.jar" -classpath build/classes -d build/test/classes test/SmokeTest.java
+jar cf build/test/classes.jar -C build/test/classes .
+"$ANDROID_BUILD_TOOLS/d8" --release --min-api 26 --lib "$ANDROID_JAR" --classpath build/classes.jar --output build/test/dex build/test/classes.jar
+python3 - <<'PY'
+from zipfile import ZipFile, ZIP_DEFLATED
+with ZipFile('build/test/unsigned.apk','a',ZIP_DEFLATED) as f:f.write('build/test/dex/classes.dex','classes.dex')
+PY
+"$ANDROID_BUILD_TOOLS/zipalign" -f -p 4 build/test/unsigned.apk build/test/aligned.apk
+"$ANDROID_BUILD_TOOLS/apksigner" sign --ks "$THOUGHTS_KEYSTORE" --ks-key-alias thoughts --ks-pass "file:$THOUGHTS_KEYSTORE_PASSWORD_FILE" --out build/test/tests.apk build/test/aligned.apk
+if [[ "${THOUGHTS_COMPILE_TEST_ONLY:-0}" != 1 ]]; then
+  adb install -r build/thoughts.apk
+  adb install -r build/test/tests.apk
+  adb shell am instrument -w top.narozeol.thoughts.test/top.narozeol.thoughts.SmokeTest | tee build/test/result.txt
+  grep -q 'PASS: native launch' build/test/result.txt
+fi

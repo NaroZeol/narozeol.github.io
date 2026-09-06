@@ -1,0 +1,16 @@
+[Unit]
+Description=Back up Thoughts with SQLite online backup
+
+[Service]
+Type=oneshot
+User=naro
+Group=naro
+WorkingDirectory=/home/naro/.local/share/naro-thoughts/app
+Environment=PYTHONPATH=/home/naro/.local/share/naro-thoughts/python
+Environment=THOUGHTS_DATABASE=/home/naro/.local/share/naro-thoughts/thoughts.sqlite
+ExecStart=/bin/bash /home/naro/.local/share/naro-thoughts/deploy/backup.sh
+UMask=0077
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/home/naro/.local/share/naro-thoughts

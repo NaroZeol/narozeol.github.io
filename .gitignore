@@ -1,5 +1,15 @@
 _site/
 Gemfile.lock
+android/build/
+*.jks
+*.keystore
+*.sqlite-wal
+*.sqlite-shm
+__pycache__/
+.pytest_cache/
+.env
+.venv/
+.sass-cache/
 
 # Compiled source #
 ###################

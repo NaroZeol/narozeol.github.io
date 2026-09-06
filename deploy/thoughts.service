@@ -1,0 +1,25 @@
+[Unit]
+Description=NaroZeol Thoughts API
+After=network.target
+
+[Service]
+Type=simple
+User=naro
+Group=naro
+WorkingDirectory=/home/naro/.local/share/naro-thoughts/app
+Environment=PYTHONPATH=/home/naro/.local/share/naro-thoughts/python
+Environment=THOUGHTS_DATABASE=/home/naro/.local/share/naro-thoughts/thoughts.sqlite
+Environment=THOUGHTS_ORIGIN=https://narozeol.top
+Environment=THOUGHTS_TRUST_PROXY=1
+ExecStart=/usr/bin/python3 -m gunicorn --workers 2 --bind 127.0.0.1:8765 --timeout 30 --access-logfile - --error-logfile - app:create_app()
+Restart=on-failure
+RestartSec=3
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/home/naro/.local/share/naro-thoughts
+
+[Install]
+WantedBy=multi-user.target

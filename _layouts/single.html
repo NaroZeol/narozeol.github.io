@@ -1,0 +1,8 @@
+---
+layout: default
+---
+<article class="article-shell">
+  <header class="article-header"><p class="eyebrow">{% if page.date %}{{ page.date | date: '%Y.%m.%d' }} · {{ page.categories | join: ' / ' }}{% else %}NAROZEOL / JOURNAL{% endif %}</p><h1>{{ page.title }}</h1>{% if page.excerpt %}<div class="article-deck">{{ page.excerpt | markdownify }}</div>{% endif %}</header>
+  <div class="article-grid"><div class="prose">{{ content }}</div>{% if page.toc %}<aside class="article-toc"><p class="eyebrow">ON THIS PAGE</p>{% include toc.html html=content sanitize=true %}</aside>{% endif %}</div>
+  {% if page.date %}<footer class="article-end"><div class="tag-list">{% for tag in page.tags %}<a href="{{ '/tags/' | relative_url }}#{{ tag | slugify }}">#{{ tag }}</a>{% endfor %}</div><a href="{{ '/posts/' | relative_url }}">← 返回文章归档</a></footer>{% endif %}
+</article>

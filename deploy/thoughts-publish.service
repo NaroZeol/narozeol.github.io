@@ -1,0 +1,17 @@
+[Unit]
+Description=Publish queued Thoughts to Gist
+After=network-online.target thoughts.service
+
+[Service]
+Type=oneshot
+User=naro
+Group=naro
+WorkingDirectory=/home/naro/.local/share/naro-thoughts/app
+Environment=PYTHONPATH=/home/naro/.local/share/naro-thoughts/python
+Environment=THOUGHTS_DATABASE=/home/naro/.local/share/naro-thoughts/thoughts.sqlite
+ExecStart=/usr/bin/python3 publisher.py
+UMask=0077
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/home/naro/.local/share/naro-thoughts

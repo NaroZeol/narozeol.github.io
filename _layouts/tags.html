@@ -1,0 +1,5 @@
+---
+layout: default
+---
+<header class="page-heading"><p class="eyebrow">FOLLOW YOUR CURIOSITY</p><h1>标签<span class="brand-dot">.</span></h1><div class="tag-list">{% assign groups = site.tags | sort %}{% for group in groups %}<a href="#{{ group[0] | slugify }}">#{{ group[0] }} <span>{{ group[1].size }}</span></a>{% endfor %}</div></header>
+{% for group in groups %}<section class="archive-group" id="{{ group[0] | slugify }}"><h2>{{ group[0] }}<span>{{ group[1].size }} 篇</span></h2><div>{% for post in group[1] %}<article class="archive-row"><time>{{ post.date | date: '%Y.%m.%d' }}</time><a href="{{ post.url | relative_url }}">{{ post.title }}</a><span>↗</span></article>{% endfor %}</div></section>{% endfor %}
