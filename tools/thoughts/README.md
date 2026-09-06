@@ -41,7 +41,7 @@ ssh -t aliyun bash /home/naro/.local/share/naro-thoughts/deploy/activate.sh
 
 依次输入仅有 `gist` scope 的 GitHub classic PAT 和服务器的 sudo 密码。Token 使用不回显的交互输入，并保存为服务器上 `0600` 的 `~/.local/share/naro-thoughts/gist-token`。不要把 token 写进仓库、App、网页或聊天。
 
-此脚本会安装 Caddy、启用系统服务和定时器，最后执行首次 Gist 发布。需要阿里云安全组开放 TCP 80/443。遇到已有非本项目 Caddy 配置或目标目录时会停止，避免覆盖。
+此脚本会安装 Caddy、启用系统服务和定时器，最后执行首次 Gist 发布。需要阿里云安全组开放 TCP 80/443，由服务器 `/home/naro/aliyun-security-group-mgr/sgmgr_rules.conf` 管理；只变更本项目所需规则。Caddy 使用 Let’s Encrypt 公共证书并自动续期，App 使用 Android 系统证书信任，不需要安装证书。遇到已有非本项目 Caddy 配置或目标目录时会停止，避免覆盖。
 
 - 网页管理：`https://narozeol.top/app/`
 - APK：`https://narozeol.top/downloads/thoughts.apk`
@@ -77,7 +77,7 @@ export THOUGHTS_KEYSTORE_PASSWORD_FILE=/path/to/private/signing-password
 bash tools/thoughts/android/build.sh
 ```
 
-签名别名固定为 `thoughts`。构建输出 `tools/thoughts/android/build/thoughts.apk`，密钥和构建目录均不纳入 Git。当前正式签名文件由工作机保存在 `~/.local/share/naro-thoughts/`，应单独备份，后续升级必须使用同一密钥并递增 manifest 的 versionCode。
+签名别名固定为 `thoughts`。构建输出 `tools/thoughts/android/build/thoughts.apk`，密钥和构建目录均不纳入 Git。当前 APK 为 1.0.2（versionCode 3），连接标准 `https://narozeol.top`；使用同签名可覆盖此前测试包。当前正式签名文件由工作机保存在 `~/.local/share/naro-thoughts/`，应单独备份，后续升级必须使用同一密钥并递增 manifest 的 versionCode。
 
 GitHub Actions 可配置 `THOUGHTS_KEYSTORE_BASE64` 和 `THOUGHTS_KEYSTORE_PASSWORD` 两个 repository secrets，生成同签名的正式包；没有 secrets 时生成包名独立的「想法·预览」，可与正式版共存，不可用于更新正式版。预览签名每次变化，只适合 CI 验证。
 

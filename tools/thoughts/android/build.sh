@@ -11,7 +11,9 @@ mkdir -p build/generated build/classes build/dex
 python3 - <<'PY'
 import os, shutil
 from pathlib import Path
-shutil.copytree('res', 'build/res', dirs_exist_ok=True)
+# Drop stale resources when switching deployment configurations.
+shutil.rmtree('build/res', ignore_errors=True)
+shutil.copytree('res', 'build/res')
 manifest = Path('AndroidManifest.xml').read_text()
 if os.environ.get('THOUGHTS_PREVIEW') == '1':
     manifest = manifest.replace('package="top.narozeol.thoughts"', 'package="top.narozeol.thoughts.preview"').replace('android:label="想法"', 'android:label="想法·预览"')
