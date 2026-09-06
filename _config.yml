@@ -7,6 +7,9 @@ plugins:
   - jekyll-include-cache
   - jekyll-sitemap
 
+exclude:
+  - tools
+
 include:
   - _pages
 
