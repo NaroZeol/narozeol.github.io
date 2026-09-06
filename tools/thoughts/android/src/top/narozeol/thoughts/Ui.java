@@ -127,7 +127,7 @@ class Ui {
     b.setMinimumWidth(0);
     b.setBackground(
       new RippleDrawable(
-        ColorStateList.valueOf(0x1831685d),
+        ColorStateList.valueOf(0x189b5a43),
         flatBackground(primary ? INK : Color.TRANSPARENT, 8),
         null
       )
@@ -271,9 +271,22 @@ class Ui {
         p.setStyle(Paint.Style.STROKE);
         p.setStrokeCap(Paint.Cap.ROUND);
         if (id.equals("capture")) {
-          c.drawRoundRect(4, 4, 20, 20, 4, 4, p);
-          c.drawLine(8, 12, 16, 12, p);
-          c.drawLine(12, 8, 12, 16, p);
+          Path pencil = new Path();
+          pencil.moveTo(4, 20);
+          pencil.lineTo(8, 20);
+          pencil.lineTo(20, 8);
+          pencil.lineTo(16, 4);
+          pencil.lineTo(4, 16);
+          pencil.close();
+          c.drawPath(pencil, p);
+          c.drawLine(13, 7, 17, 11, p);
+        } else if (id.equals("sync")) {
+          c.drawArc(4, 4, 20, 20, 205, 150, false, p);
+          c.drawArc(4, 4, 20, 20, 25, 150, false, p);
+          c.drawLine(20, 6, 20, 11, p);
+          c.drawLine(15, 11, 20, 11, p);
+          c.drawLine(4, 18, 4, 13, p);
+          c.drawLine(4, 13, 9, 13, p);
         } else if (id.equals("notes")) {
           c.drawRoundRect(5, 3, 19, 21, 2, 2, p);
           for (int y = 8; y < 18; y += 4) c.drawLine(9, y, 15, y, p);

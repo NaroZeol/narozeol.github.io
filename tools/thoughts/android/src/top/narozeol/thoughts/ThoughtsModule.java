@@ -58,6 +58,10 @@ final class ThoughtsModule extends Ui {
         return id.equals("capture") ? "发布" : "同步";
       }
 
+      public String headerIcon() {
+        return id.equals("notes") ? "sync" : "";
+      }
+
       public void performHeaderAction() {
         if (id.equals("capture")) saveNote();
         else if (!account.isVerified()) host.navigate("server");

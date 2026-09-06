@@ -19,6 +19,10 @@ interface Feature {
     return "";
   }
 
+  default String headerIcon() {
+    return "";
+  }
+
   default void performHeaderAction() {}
 
   default void renderFooter(LinearLayout footer) {}

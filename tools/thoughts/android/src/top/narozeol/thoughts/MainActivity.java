@@ -167,6 +167,13 @@ public final class MainActivity extends Activity implements Feature.Host {
         false
       );
       action.setTextColor(Ui.BLUE);
+      if (!active.headerIcon().isEmpty()) {
+        action.setContentDescription(active.headerAction());
+        action.setText("");
+        Drawable symbol = ui.icon(active.headerIcon(), Ui.MUTED);
+        symbol.setBounds(0, 0, ui.dp(21), ui.dp(21));
+        action.setCompoundDrawables(symbol, null, null, null);
+      }
       header.addView(action);
     }
     root.addView(header);

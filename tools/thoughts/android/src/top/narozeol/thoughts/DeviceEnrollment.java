@@ -32,18 +32,26 @@ final class DeviceEnrollment {
       InputStream input = channel.getInputStream();
       channel.connect(10000);
       byte[] buffer = new byte[1024];
-      int count,
-        total = 0;
-      while ((count = input.read(buffer)) != -1) {
+      int total = 0;
+      long deadline = System.nanoTime() + 35_000_000_000L;
+      while (!channel.isClosed() || input.available() > 0) {
+        if (System.nanoTime() > deadline) throw new Api.Failure(
+          408,
+          "设备登记超时，请重试或使用手动登记。"
+        );
+        int available = input.available();
+        if (available == 0) {
+          Thread.sleep(25);
+          continue;
+        }
+        int count = input.read(buffer, 0, Math.min(available, buffer.length));
+        if (count < 0) break;
         total += count;
         if (total > 16384) throw new Api.Failure(
           503,
           "服务器登记响应异常，请改用手动登记。"
         );
       }
-      long deadline = System.nanoTime() + 5_000_000_000L;
-      while (!channel.isClosed() && System.nanoTime() < deadline)
-        Thread.sleep(20);
       if (channel.getExitStatus() != 0) throw new Api.Failure(
         503,
         "登录成功，但设备登记未完成。请检查服务器登记脚本或使用手动登记。"
