@@ -20,6 +20,7 @@ final class Account {
   void verified(JSONObject session) {
     prefs
       .edit()
+      .remove("token")
       .putBoolean("ssh_registered", true)
       .putString(
         "capabilities",

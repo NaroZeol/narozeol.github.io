@@ -76,12 +76,6 @@ final class ThoughtsModule extends Ui {
     restoring = true;
     editingId = drafts.getString("id", null);
     editingVersion = drafts.getInt("version", 0);
-    TextView heading = text(
-      editingId == null ? "记下这一刻。" : "编辑想法",
-      28,
-      INK
-    );
-    heading.setTypeface(Typeface.create("serif", Typeface.NORMAL));
     heading(
       surface,
       "CAPTURE",
@@ -196,7 +190,6 @@ final class ThoughtsModule extends Ui {
   }
 
   private void notes() {
-    TextView title = text("我的想法", 24, INK);
     heading(surface, "YOUR NOTES", "我的想法", "让零散的念头，有迹可循。");
     search = input("搜索内容或标签", false);
     search.setContentDescription("搜索想法");
@@ -218,8 +211,16 @@ final class ThoughtsModule extends Ui {
         },
         false
       );
-      b.setTextColor(filter.equals(item[0]) ? BLUE : MUTED);
-      LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(0, dp(44), 1);
+      boolean selected = filter.equals(item[0]);
+      b.setTextColor(selected ? BLUE : MUTED);
+      b.setTextSize(13);
+      b.setSingleLine(true);
+      b.setMinWidth(0);
+      b.setMinimumWidth(0);
+      b.setPadding(dp(6), dp(8), dp(6), dp(8));
+      b.setBackground(background(selected ? 0xffe5eee7 : PAPER, 12));
+      b.setSelected(selected);
+      LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(0, dp(48), 1);
       p.setMargins(dp(2), 0, dp(2), 0);
       filters.addView(b, p);
     }
@@ -310,7 +311,15 @@ final class ThoughtsModule extends Ui {
         space(feed, 28);
         feed.addView(
           text(
-            query.isEmpty() ? "这里还没有想法。" : "没有找到相关想法。",
+            !query.isEmpty()
+              ? "没有找到相关想法，试试其他关键词。"
+              : filter.equals("pending")
+                ? "没有待同步记录。"
+                : filter.equals("conflict")
+                  ? "没有需要处理的冲突。"
+                  : filter.equals("trash")
+                    ? "回收站是空的。"
+                    : "这里还没有想法，先记下今天的第一个念头。",
             14,
             MUTED
           )

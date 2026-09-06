@@ -43,10 +43,12 @@ final class SettingsFeature extends Ui implements Feature {
     space(data, 14);
     data.addView(button("导出本机记录与草稿", () -> host.export(false), true));
     space(data, 10);
-    data.addView(button("导出服务器完整历史", () -> host.export(true), false));
+    if (account.isVerified() && account.can("thoughts")) data.addView(
+      button("导出服务器完整历史", () -> host.export(true), false)
+    );
     LinearLayout sync = card(surface, "同步状态", account.lastSync());
     space(sync, 14);
-    sync.addView(button("查看待同步记录", () -> host.navigate("notes"), false));
+    sync.addView(button("查看本机记录", () -> host.navigate("notes"), false));
     LinearLayout about = card(
       surface,
       "想法 1.2",
@@ -61,23 +63,38 @@ final class SettingsFeature extends Ui implements Feature {
       )
     );
     space(about, 12);
-    about.addView(
-      button(
-        "开源组件与许可",
-        () ->
-          new AlertDialog.Builder(activity)
-            .setTitle("开源组件")
-            .setMessage(
-              "SSH：mwiede/JSch 2.28.7\nBSD 3-Clause / ISC 许可\n\n完整许可随 APK 提供于 assets/THIRD_PARTY_NOTICES.txt。"
-            )
-            .setPositiveButton("关闭", null)
-            .show(),
-        false
-      )
-    );
+    about.addView(button("开源组件与许可", () -> showLicenses(), false));
     space(surface, 8);
     surface.addView(
       button("断开并清除本机记录", () -> host.disconnect(), false)
     );
+  }
+
+  private void showLicenses() {
+    try (
+      java.io.InputStream input = activity
+        .getAssets()
+        .open("THIRD_PARTY_NOTICES.txt")
+    ) {
+      java.io.ByteArrayOutputStream output =
+        new java.io.ByteArrayOutputStream();
+      byte[] buffer = new byte[4096];
+      int count;
+      while ((count = input.read(buffer)) != -1) output.write(buffer, 0, count);
+      android.widget.TextView content = text(output.toString("UTF-8"), 13, INK);
+      content.setPadding(dp(24), dp(16), dp(24), dp(16));
+      content.setTextIsSelectable(true);
+      android.widget.ScrollView scroll = new android.widget.ScrollView(
+        activity
+      );
+      scroll.addView(content);
+      new AlertDialog.Builder(activity)
+        .setTitle("开源组件与许可")
+        .setView(scroll)
+        .setPositiveButton("关闭", null)
+        .show();
+    } catch (Exception e) {
+      status("暂时无法读取许可文件");
+    }
   }
 }

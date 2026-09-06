@@ -19,11 +19,13 @@ PidFile $PWD/build/ssh-fixture/sshd.pid
 AuthorizedKeysFile .ssh/authorized_keys
 PasswordAuthentication no
 KbdInteractiveAuthentication no
-UsePAM no
+UsePAM yes
 PermitRootLogin no
 AllowUsers $(id -un)
 LogLevel VERBOSE
 EOF
 sudo mkdir -p /run/sshd
 sudo /usr/sbin/sshd -f "$PWD/build/ssh-fixture/sshd_config" -E "$PWD/build/ssh-fixture/sshd.log"
+sudo chmod 644 "$PWD/build/ssh-fixture/sshd.log"
+sudo passwd -S "$(id -un)"
 curl --fail --silent --retry 5 --retry-connrefused http://127.0.0.1:8765/api/health

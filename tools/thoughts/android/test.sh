@@ -37,6 +37,7 @@ if [[ "${THOUGHTS_COMPILE_TEST_ONLY:-0}" != 1 ]]; then
   [[ "${THOUGHTS_PREVIEW:-0}" == 1 ]] && apk_package=top.narozeol.thoughts.preview
   adb pull "/sdcard/Android/data/$apk_package/files/screenshots" build/test/ || true
   if ! grep -q 'PASS: native launch' build/test/result.txt; then
+    [[ -f build/ssh-fixture/sshd.log ]] && cat build/ssh-fixture/sshd.log
     adb logcat -d -b crash
     exit 1
   fi
