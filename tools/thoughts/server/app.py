@@ -24,7 +24,7 @@ def create_app(config=None):
     app = Flask(__name__, static_folder="static", static_url_path="/app/assets")
     app.config.update(
         DATABASE=os.environ.get("THOUGHTS_DATABASE", str(Path.home() / ".local/share/naro-thoughts/thoughts.sqlite")),
-        PUBLIC_ORIGIN=os.environ.get("THOUGHTS_ORIGIN", "https://narozeol.top:8443"),
+        PUBLIC_ORIGIN=os.environ.get("THOUGHTS_ORIGIN", "https://narozeol.top"),
         COOKIE_SECURE=os.environ.get("THOUGHTS_DEV") != "1",
         MAX_CONTENT_LENGTH=128 * 1024,
     )
