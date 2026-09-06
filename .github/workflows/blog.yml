@@ -1,0 +1,37 @@
+name: Blog
+on:
+  push:
+    paths:
+      - '**'
+      - '!tools/**'
+      - '!.github/**'
+      - '.github/workflows/blog.yml'
+  pull_request:
+    paths:
+      - '**'
+      - '!tools/**'
+      - '!.github/**'
+      - '.github/workflows/blog.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: blog.yml-${{ github.event_name }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+jobs:
+  blog:
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.2'
+          bundler-cache: true
+      - run: bundle exec jekyll build --trace
+      - run: node --check assets/js/thoughts.js
+      - uses: actions/upload-artifact@v4
+        with:
+          name: blog-preview
+          path: _site/
+          retention-days: 14

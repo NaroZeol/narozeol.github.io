@@ -1,0 +1,22 @@
+---
+layout: default
+---
+<section class="home-intro">
+  <div><p class="eyebrow">JOURNAL / {{ site.posts.size }} ARTICLES</p><h1>{{ site.title }}<span class="brand-dot">.</span></h1></div>
+  <aside class="author-note"><img src="{{ site.author.avatar | relative_url }}" width="64" height="64" alt="NaroZeol 的头像"><p>{{ site.author.name }}</p><span>{{ site.author.bio }}</span><a href="{{ '/about/' | relative_url }}">About ↗</a></aside>
+</section>
+<div class="journal-grid">
+  <section aria-labelledby="writing-title">
+    <div class="section-heading"><h2 id="writing-title">最近的文章 <span>WRITING</span></h2><a href="{{ '/posts/' | relative_url }}">全部 {{ site.posts.size }} 篇 ↗</a></div>
+    {% for post in site.posts limit:6 %}
+    <article class="post-row {% if forloop.first %}post-featured{% endif %}">
+      <div class="post-meta"><time datetime="{{ post.date | date_to_xmlschema }}">{{ post.date | date: '%Y.%m.%d' }}</time><span>{{ post.categories | first | default: '随笔' }}</span></div>
+      <h3><a href="{{ post.url | relative_url }}">{{ post.title }}</a></h3>
+      <p>{{ post.excerpt | strip_html | truncate: 120 }}</p><a class="read-link" href="{{ post.url | relative_url }}" aria-label="阅读 {{ post.title | escape }}">阅读全文 <span>↗</span></a>
+    </article>
+    {% endfor %}
+  </section>
+  <aside class="journal-sidebar">
+    <section class="topics"><h2>沿着兴趣探索</h2>{% assign sorted_categories = site.categories | sort %}{% for category in sorted_categories %}<a href="{{ '/categories/' | relative_url }}#{{ category[0] | slugify }}"><span>{{ category[0] }}</span><span>{{ category[1].size | prepend: '0' | slice: -2, 2 }} ↗</span></a>{% endfor %}<a href="{{ '/tags/' | relative_url }}"><span>所有标签</span><span>↗</span></a></section>
+  </aside>
+</div>

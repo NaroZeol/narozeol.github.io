@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f8f9fb">
+  {% seo %}
+  <link rel="icon" href="{{ '/assets/icons/favicon-32x32.png' | relative_url }}">
+  <link rel="stylesheet" href="{{ '/assets/css/journal.css' | relative_url }}">
+</head>
+<body>
+  <a class="skip-link" href="#main">跳到正文</a>
+  <header class="masthead wrap">
+    <a class="wordmark" href="{{ '/' | relative_url }}">NaroZeol<span class="brand-dot">.</span></a>
+    <nav aria-label="主导航">
+      <a href="{{ '/posts/' | relative_url }}" {% if page.url contains '/posts/' %}aria-current="page"{% endif %}>文章</a>
+      <a href="{{ '/thoughts/' | relative_url }}" {% if page.url contains '/thoughts/' %}aria-current="page"{% endif %}>想法</a>
+      <a href="{{ '/about/' | relative_url }}" {% if page.url contains '/about/' %}aria-current="page"{% endif %}>关于</a>
+      <a class="nav-external" href="https://github.com/NaroZeol">GitHub ↗</a>
+    </nav>
+  </header>
+  <main id="main" class="wrap">{{ content }}</main>
+  <footer class="site-footer wrap"><span>© {{ 'now' | date: '%Y' }} NaroZeol</span><a href="{{ '/feed.xml' | relative_url }}">RSS ↗</a></footer>
+</body>
+</html>

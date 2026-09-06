@@ -5,7 +5,7 @@ main:
     url: /categories/
   - title: "Tags"
     url: /tags/
-  - title: "Thoughts"
+  - title: "想法"
     url: /thoughts/
   - title: "About"
     url: /about/

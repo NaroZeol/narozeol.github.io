@@ -1,0 +1,5 @@
+---
+layout: default
+---
+<header class="page-heading"><p class="eyebrow">THE ARCHIVE</p><h1>文章<span class="brand-dot">.</span></h1><p>共 {{ site.posts.size }} 篇</p><div class="text-links"><a href="{{ '/categories/' | relative_url }}">按分类浏览 ↗</a><a href="{{ '/tags/' | relative_url }}">按标签浏览 ↗</a></div></header>
+{% assign years = site.posts | group_by_exp: 'post', "post.date | date: '%Y'" %}{% for year in years %}<section class="archive-group"><h2>{{ year.name }}<span>{{ year.items.size }} 篇</span></h2><div>{% for post in year.items %}<article class="archive-row"><time datetime="{{ post.date | date_to_xmlschema }}">{{ post.date | date: '%m.%d' }}</time><a href="{{ post.url | relative_url }}">{{ post.title }}</a><span>↗</span></article>{% endfor %}</div></section>{% endfor %}

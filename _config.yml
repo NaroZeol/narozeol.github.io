@@ -6,9 +6,18 @@ url: "https://narozeol.github.io/"
 plugins:
   - jekyll-include-cache
   - jekyll-sitemap
+  - jekyll-feed
+  - jekyll-seo-tag
 
+thoughts_gist_url: "https://gist.githubusercontent.com/NaroZeol/a783c548bd3c7b22578a4bd3748bc9d5/raw/thoughts.json"
 exclude:
   - tools
+  - README.md
+  - vendor
+  - .bundle
+  - Gemfile
+  - Gemfile.lock
+  - node_modules
 
 include:
   - _pages
