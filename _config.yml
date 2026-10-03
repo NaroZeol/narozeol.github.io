@@ -12,6 +12,7 @@ plugins:
 thoughts_gist_url: "https://gist.githubusercontent.com/NaroZeol/a783c548bd3c7b22578a4bd3748bc9d5/raw/thoughts.json"
 exclude:
   - tools
+  - tests
   - README.md
   - vendor
   - .bundle
