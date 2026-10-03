@@ -1,6 +1,6 @@
 _site/
 Gemfile.lock
-tools/thoughts/android/build/
+tools/server-kit/android/build/
 *.jks
 *.keystore
 *.sqlite-wal
