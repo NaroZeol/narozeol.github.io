@@ -92,7 +92,7 @@
       render();
     } catch {
       feed.replaceChildren(
-        element("p", "暂时无法从 Gist 加载想法，请稍后重试。", "feed-message"),
+        element("p", "暂时无法加载想法，请稍后重试。", "feed-message"),
       );
       more.hidden = false;
       more.textContent = "重试";
