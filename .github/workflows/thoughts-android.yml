@@ -36,7 +36,7 @@ jobs:
         api: [29, 35]
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: '17'
@@ -67,7 +67,7 @@ jobs:
           export ANDROID_JAR="$ANDROID_HOME/platforms/android-35/android.jar"
           export ANDROID_BUILD_TOOLS="$ANDROID_HOME/build-tools/35.0.0"
           bash tools/thoughts/android/build.sh
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: thoughts-android-${{ env.APK_KIND }}-api${{ matrix.api }}
           path: tools/thoughts/android/build/thoughts.apk
@@ -90,7 +90,7 @@ jobs:
           arch: x86_64
           disable-animations: true
           script: ANDROID_JAR="$ANDROID_HOME/platforms/android-35/android.jar" ANDROID_BUILD_TOOLS="$ANDROID_HOME/build-tools/35.0.0" bash tools/thoughts/android/test.sh
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: thoughts-android-verification-api${{ matrix.api }}
