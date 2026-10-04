@@ -1,6 +1,8 @@
 ---
-title: "Posts by Category"
+title: "分类"
 layout: categories
 permalink: /categories/
 author_profile: true
 ---
+
+{% include archive-navigation.html %}

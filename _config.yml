@@ -1,13 +1,30 @@
 future: true
+locale: "zh-CN"
+date_format: "%Y-%m-%d"
+minimal_mistakes_skin: "default"
 title: NaroZeol的博客
+description: "NaroZeol 的个人博客，记录系统与编程的学习笔记、实践过程和日常想法。"
+name: "NaroZeol"
+repository: "NaroZeol/narozeol.github.io"
+timezone: "Asia/Shanghai"
+copyright: "NaroZeol"
 markdown: kramdown
-remote_theme: "mmistakes/minimal-mistakes@4.26.2"
-url: "https://narozeol.github.io/"
+remote_theme: "mmistakes/minimal-mistakes@4.27.3"
+url: "https://narozeol.github.io"
+baseurl: ""
 plugins:
   - jekyll-include-cache
   - jekyll-sitemap
-  - jekyll-feed
   - jekyll-seo-tag
+  - jekyll-paginate
+
+# Theme-native list pagination; the full archive stays available at /posts/.
+paginate: 8
+paginate_path: /page:num/
+
+# Disable both the theme's subscription links and feed discovery metadata.
+atom_feed:
+  hide: true
 
 thoughts_gist_url: "https://gist.githubusercontent.com/NaroZeol/a783c548bd3c7b22578a4bd3748bc9d5/raw/thoughts.json"
 exclude:
@@ -25,18 +42,15 @@ include:
 
 author:
   name   : "NaroZeol"
+  home   : "/about/"
   avatar : "/assets/images/bio-photo.jpg"
-  bio    : "Student"
   links:
     - label: "GitHub"
       icon: "fab fa-fw fa-github"
       url: "https://github.com/NaroZeol"
 
 footer:
-  links:
-    - label: "GitHub"
-      icon: "fab fa-fw fa-github"
-      url: "https://github.com/NaroZeol"
+  since: "2024"
 
 defaults:
   # _posts
@@ -48,12 +62,12 @@ defaults:
       author_profile: true
       read_time: false
       show_date: true
-      comments: true
-      share: true
+      comments: false
+      share: false
       related: true
       toc: true
       toc_label: "目录"
-      toc_icon: "cog"
+      toc_icon: "list-ul"
       toc_sticky: true
   # _pages
   - scope:
@@ -62,6 +76,7 @@ defaults:
     values:
       layout: single
       author_profile: true
+      classes: wide
 
 category_archive:
   type: liquid

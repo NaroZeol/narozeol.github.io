@@ -9,6 +9,7 @@ __pycache__/
 .env
 .venv/
 .sass-cache/
+node_modules/
 
 # Compiled source #
 ###################

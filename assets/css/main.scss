@@ -1,0 +1,19 @@
+---
+search: false
+---
+@charset "utf-8";
+
+// Keep the theme's layout and type scale; add system Chinese font fallbacks.
+$sans-serif: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans CJK SC",
+  "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+
+// More usable desktop width, with compact author and table-of-contents columns.
+$max-width: 1440px;
+$right-sidebar-width-narrow: 180px;
+$right-sidebar-width: 220px;
+$doc-font-size-large: 18px;
+$doc-font-size-x-large: 20px;
+
+@import "minimal-mistakes/skins/{{ site.minimal_mistakes_skin | default: 'default' }}";
+@import "minimal-mistakes";
+@import "blog";

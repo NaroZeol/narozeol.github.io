@@ -1,0 +1,9 @@
+<nav class="archive-navigation" aria-label="文章浏览方式">
+  <a href="{{ '/' | relative_url }}"{% if page.layout == 'home' %} aria-current="page"{% endif %}>全部</a>
+  <a href="{{ '/categories/' | relative_url }}"{% if page.url == '/categories/' %} aria-current="page"{% endif %}>分类</a>
+  <a href="{{ '/tags/' | relative_url }}"{% if page.url == '/tags/' %} aria-current="page"{% endif %}>标签</a>
+  <a href="{{ '/posts/' | relative_url }}"{% if page.url == '/posts/' %} aria-current="page"{% endif %}>年份</a>
+</nav>
+{% if page.layout == 'posts' or page.layout == 'categories' or page.layout == 'tags' %}
+<script src="{{ '/assets/js/archive-filter.js' | relative_url }}" defer></script>
+{% endif %}

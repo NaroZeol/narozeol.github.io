@@ -30,7 +30,9 @@ jobs:
           bundler-cache: true
       - run: bundle exec jekyll build --trace
       - run: node --check assets/js/thoughts.js
-      - run: node --test tests/thoughts-reader.test.mjs
+      - run: node --check assets/js/thought-date-picker.mjs
+      - run: node --check assets/js/archive-filter.js
+      - run: node --test tests/*.test.mjs
       - uses: actions/upload-artifact@v7
         with:
           name: blog-preview
